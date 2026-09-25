@@ -35,7 +35,11 @@ idempotency (`PayPal-Request-Id`) and token refresh for the OAuth providers, and
    Sharma Traders, Verma Sweets and Gupta Electronics, or reuse the default personal account for all three.
 3. **Apps & Credentials > Sandbox > Create App** (type Merchant, linked to that business account). Copy the
    **Client ID** and **Secret**.
-4. `swy auth connect PayPal` and paste the sandbox Client ID and Secret when asked.
+4. Connect the credentials. On a paid Swytchcode plan: `swy auth connect PayPal` > **Create a new connection** > paste
+   them. On the free Developer plan that option opens the upgrade page, so use the env route instead: put
+   `PAYPAL_CLIENT_ID=` and `PAYPAL_CLIENT_SECRET=` in `.env.local`, then run `npm run paypal:token`. It writes
+   `PAYPAL_API_KEY` (a sandbox access token Swytchcode reads from the environment) and checks it with one
+   Swytchcode read. The token lasts about 9 hours: re-run it before a demo.
 
 ## 3. Gmail
 

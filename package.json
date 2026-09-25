@@ -18,7 +18,8 @@
     "docs:tools": "tsx scripts/gen-tools-doc.ts",
     "eval:agent": "node --conditions=react-server --import tsx scripts/eval-agent.ts",
     "scenario": "node --conditions=react-server --import tsx scripts/scenario.ts",
-    "seed:inbox": "node --conditions=react-server --import tsx scripts/seed-inbox.ts"
+    "seed:inbox": "node --conditions=react-server --import tsx scripts/seed-inbox.ts",
+    "paypal:token": "node --conditions=react-server --import tsx scripts/paypal-token.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.80",
