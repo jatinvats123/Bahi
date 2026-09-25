@@ -1,0 +1,340 @@
+@import "tailwindcss";
+
+/*
+ * Bahi design tokens. A modern digital bahi-khata: warm paper, ink, vermilion cloth, gold zari.
+ * Base values come from the brief. "*-ink" variants are AA-tuned text colours for tones whose
+ * base value is too light for text; `npm run contrast` checks every pair.
+ * Theme is chosen by data-theme on <html> (set before paint in layout.tsx).
+ */
+
+:root {
+  --paper: #f5efe3;
+  --paper-raised: #fbf8f1;
+  --paper-sunk: #ece3d2;
+  --ink: #1d1814;
+  --ink-soft: #5e534a;
+  --ink-faint: #978a7e;
+  --ink-faint-text: #6f6358;
+  --rule: #d9cdb8;
+  --rule-faint: rgb(154 131 96 / 0.16);
+  --bahi: #8e1b17;
+  --bahi-deep: #6b120f;
+  --bahi-ink: #8e1b17;
+  --bahi-fill: #8e1b17;
+  --zari: #b5892e;
+  --zari-ink: #7c5a14;
+  --paid: #2e6b4e;
+  --paid-ink: #2e6b4e;
+  --pending: #b7791f;
+  --pending-ink: #86560b;
+  --blocked: #b42318;
+  --blocked-ink: #b42318;
+  --approval: #1f4e79;
+  --approval-ink: #1f4e79;
+  --expired-ink: #6b635c;
+  --on-bahi: #fbf3e4;
+  --focus: #9a7224;
+
+  /* Cloth (sidebar cover) */
+  --cloth: #8e1b17;
+  --cloth-deep: #6b120f;
+  --cloth-ink: #f7ead3;
+  --cloth-ink-soft: #e6cfae;
+  --cloth-stitch: #d7ac52;
+
+  --margin-line: rgb(142 27 23 / 0.42);
+  --shadow-tint: 60 40 20;
+  --stamp-blend: multiply;
+
+  --radius: 6px;
+  --margin-x: 76px;
+  --gutter: 20px;
+  --rule-gap: 32px;
+  --sidebar-w: 248px;
+
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --paper: #15110f;
+  --paper-raised: #1d1815;
+  --paper-sunk: #100d0b;
+  --ink: #f1e8da;
+  --ink-soft: #bfb2a2;
+  --ink-faint: #8a7d70;
+  --ink-faint-text: #a09282;
+  --rule: #342b25;
+  --rule-faint: rgb(215 172 82 / 0.07);
+  --bahi: #c8453a;
+  --bahi-deep: #8f2a22;
+  --bahi-ink: #e0685c;
+  --bahi-fill: #b23a30;
+  --zari: #d7ac52;
+  --zari-ink: #d7ac52;
+  --paid: #5fae86;
+  --paid-ink: #5fae86;
+  --pending: #e0a64b;
+  --pending-ink: #e0a64b;
+  --blocked: #f0655a;
+  --blocked-ink: #f0655a;
+  --approval: #7fa8d6;
+  --approval-ink: #7fa8d6;
+  --expired-ink: #a39a91;
+  --on-bahi: #fbf3e4;
+  --focus: #d7ac52;
+
+  --cloth: #5c1511;
+  --cloth-deep: #3c0d0a;
+  --cloth-ink: #f1e2c8;
+  --cloth-ink-soft: #d4bb97;
+  --cloth-stitch: #c89b45;
+
+  --margin-line: rgb(200 69 58 / 0.42);
+  --shadow-tint: 0 0 0;
+  --stamp-blend: normal;
+
+  color-scheme: dark;
+}
+
+/* No-JS fallback: follow the OS until the inline script sets data-theme. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --paper: #15110f;
+    --paper-raised: #1d1815;
+    --paper-sunk: #100d0b;
+    --ink: #f1e8da;
+    --ink-soft: #bfb2a2;
+    --ink-faint: #8a7d70;
+    --ink-faint-text: #a09282;
+    --rule: #342b25;
+    --bahi: #c8453a;
+    --bahi-ink: #e0685c;
+    --zari: #d7ac52;
+    --cloth: #5c1511;
+    --cloth-deep: #3c0d0a;
+    color-scheme: dark;
+  }
+}
+
+@media (max-width: 767px) {
+  :root {
+    --margin-x: 58px;
+    --gutter: 14px;
+  }
+}
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-paper-sunk: var(--paper-sunk);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-ink-faint-text: var(--ink-faint-text);
+  --color-rule: var(--rule);
+  --color-bahi: var(--bahi);
+  --color-bahi-deep: var(--bahi-deep);
+  --color-bahi-ink: var(--bahi-ink);
+  --color-bahi-fill: var(--bahi-fill);
+  --color-zari: var(--zari);
+  --color-zari-ink: var(--zari-ink);
+  --color-paid: var(--paid);
+  --color-paid-ink: var(--paid-ink);
+  --color-pending: var(--pending);
+  --color-pending-ink: var(--pending-ink);
+  --color-blocked: var(--blocked);
+  --color-blocked-ink: var(--blocked-ink);
+  --color-approval: var(--approval);
+  --color-approval-ink: var(--approval-ink);
+  --color-expired-ink: var(--expired-ink);
+  --color-on-bahi: var(--on-bahi);
+  --color-cloth-ink: var(--cloth-ink);
+  --color-cloth-ink-soft: var(--cloth-ink-soft);
+  --color-cloth-stitch: var(--cloth-stitch);
+  --color-focus: var(--focus);
+
+  --font-serif: var(--font-fraunces), "Georgia", serif;
+  --font-sans: var(--font-manrope), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --font-deva: var(--font-tiro-deva), serif;
+
+  --radius-bahi: var(--radius);
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  html {
+    background: var(--paper);
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: rgb(181 137 46 / 0.35);
+    color: var(--ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif);
+    font-optical-sizing: auto;
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  /* Amounts, ids, timestamps */
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum", "zero" 0;
+  }
+
+  /* Main canvas: ledger paper with faint rules and one red margin line. */
+  .ledger-paper {
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(
+        to right,
+        transparent calc(var(--margin-x) - 1px),
+        var(--margin-line) calc(var(--margin-x) - 1px),
+        var(--margin-line) var(--margin-x),
+        transparent var(--margin-x)
+      ),
+      repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent calc(var(--rule-gap) - 1px),
+        var(--rule-faint) calc(var(--rule-gap) - 1px),
+        var(--rule-faint) var(--rule-gap)
+      );
+  }
+
+  /* Content that starts right of the margin line. */
+  .after-margin {
+    padding-left: calc(var(--margin-x) + var(--gutter));
+    padding-right: var(--gutter);
+  }
+
+  /* Rows whose first column sits inside the margin. */
+  .margin-grid {
+    display: grid;
+    grid-template-columns: var(--margin-x) minmax(0, 1fr);
+  }
+
+  /* Sidebar cover: red linen cloth with a gold stitch inset. */
+  .bahi-cloth {
+    position: relative;
+    isolation: isolate;
+    background-color: var(--cloth);
+    background-image:
+      radial-gradient(120% 80% at 0% 0%, rgb(255 255 255 / 0.07), transparent 60%),
+      radial-gradient(140% 90% at 100% 100%, rgb(0 0 0 / 0.28), transparent 65%),
+      repeating-linear-gradient(0deg, rgb(255 255 255 / 0.035) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(90deg, rgb(0 0 0 / 0.06) 0 1px, transparent 1px 4px),
+      linear-gradient(180deg, var(--cloth) 0%, var(--cloth-deep) 100%);
+    color: var(--cloth-ink);
+  }
+  .bahi-cloth::after {
+    content: "";
+    position: absolute;
+    inset: 9px;
+    border: 1.5px dashed var(--cloth-stitch);
+    border-radius: 4px;
+    opacity: 0.75;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  /* Rubber stamp. Colour comes from `color`; border and text share it. */
+  .stamp {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    line-height: 1;
+    border: 2px solid currentColor;
+    border-radius: 3px;
+    box-shadow: inset 0 0 0 2px var(--paper-raised), inset 0 0 0 3px currentColor;
+    mix-blend-mode: var(--stamp-blend);
+    white-space: nowrap;
+    user-select: none;
+    /* Slightly uneven ink */
+    -webkit-mask-image: radial-gradient(140% 120% at 30% 40%, #000 62%, rgb(0 0 0 / 0.82) 100%);
+    mask-image: radial-gradient(140% 120% at 30% 40%, #000 62%, rgb(0 0 0 / 0.82) 100%);
+  }
+
+  .paper-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    box-shadow: 0 1px 0 rgb(var(--shadow-tint) / 0.04), 0 6px 18px -12px rgb(var(--shadow-tint) / 0.25);
+  }
+
+  .skeleton-ink {
+    background: linear-gradient(90deg, var(--paper-sunk) 0%, var(--rule) 50%, var(--paper-sunk) 100%);
+    background-size: 200% 100%;
+    animation: ink-shimmer 1.4s ease-in-out infinite;
+    border-radius: 3px;
+  }
+}
+
+@keyframes ink-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@keyframes mic-ring {
+  from {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  to {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+
+@keyframes wave-bar {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

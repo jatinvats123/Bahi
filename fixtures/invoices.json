@@ -1,0 +1,13 @@
+{
+  "_note": "Mock ledger. Dates are day offsets from today (IST) so the demo always looks current.",
+  "invoices": [
+    { "id": "INV-2026-0118", "clientId": "cl_gupta", "description": "Billing software setup", "amountInr": 42000, "status": "paid", "issuedOffsetDays": -30, "dueOffsetDays": -15, "paidOffsetDays": -12, "lastReminderOffsetDays": null },
+    { "id": "INV-2026-0124", "clientId": "cl_sharma", "description": "Diwali flyer design", "amountInr": 18500, "status": "overdue", "issuedOffsetDays": -28, "dueOffsetDays": -8, "paidOffsetDays": null, "lastReminderOffsetDays": -3 },
+    { "id": "INV-2026-0127", "clientId": "cl_verma", "description": "Instagram reels, 8 videos", "amountInr": 32000, "status": "overdue", "issuedOffsetDays": -25, "dueOffsetDays": -5, "paidOffsetDays": null, "lastReminderOffsetDays": null },
+    { "id": "INV-2026-0131", "clientId": "cl_gupta", "description": "Product catalogue shoot", "amountInr": 24000, "status": "paid", "issuedOffsetDays": -14, "dueOffsetDays": 1, "paidOffsetDays": 0, "lastReminderOffsetDays": null },
+    { "id": "INV-2026-0135", "clientId": "cl_khanna", "description": "Logo refresh", "amountInr": 9500, "status": "paid", "issuedOffsetDays": -12, "dueOffsetDays": -2, "paidOffsetDays": 0, "lastReminderOffsetDays": -4 },
+    { "id": "INV-2026-0138", "clientId": "cl_sharma", "description": "GST invoice template", "amountInr": 6000, "status": "sent", "issuedOffsetDays": -6, "dueOffsetDays": 9, "paidOffsetDays": null, "lastReminderOffsetDays": null },
+    { "id": "INV-2026-0140", "clientId": "cl_iyer", "description": "Menu card print design", "amountInr": 12500, "status": "sent", "issuedOffsetDays": -3, "dueOffsetDays": 12, "paidOffsetDays": null, "lastReminderOffsetDays": null },
+    { "id": "INV-2026-0141", "clientId": "cl_gupta", "description": "Website maintenance, October", "amountInr": 28000, "status": "draft", "issuedOffsetDays": 0, "dueOffsetDays": 15, "paidOffsetDays": null, "lastReminderOffsetDays": null }
+  ]
+}

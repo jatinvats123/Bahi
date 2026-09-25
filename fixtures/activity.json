@@ -1,0 +1,10 @@
+{
+  "_note": "Mock run history shown on /activity when data/runs.json is empty in mock mode. Offsets are minutes before now.",
+  "runs": [
+    { "runId": "run_mock_s1", "script": "s1-invoice", "startedOffsetMinutes": -38 },
+    { "runId": "run_mock_s3", "script": "s3-inbox", "startedOffsetMinutes": -126 },
+    { "runId": "run_mock_s5", "script": "s5-refund-blocked", "startedOffsetMinutes": -212 },
+    { "runId": "run_mock_s2d", "script": "s2-denied", "startedOffsetMinutes": -1290 },
+    { "runId": "run_mock_s6", "script": "s6-hisaab", "startedOffsetMinutes": -1395 }
+  ]
+}

@@ -1,0 +1,7 @@
+[
+  { "id": "cl_sharma", "name": "Sharma Traders", "contact": "Rakesh Sharma", "email": "accounts@sharmatraders.example", "city": "Kanpur" },
+  { "id": "cl_verma", "name": "Verma Sweets", "contact": "Neha Verma", "email": "orders@vermasweets.example", "city": "Jaipur" },
+  { "id": "cl_gupta", "name": "Gupta Electronics", "contact": "Anil Gupta", "email": "billing@guptaelectronics.example", "city": "Lucknow" },
+  { "id": "cl_khanna", "name": "Khanna Tailors", "contact": "Simran Khanna", "email": "hello@khannatailors.example", "city": "Delhi" },
+  { "id": "cl_iyer", "name": "Iyer Caterers", "contact": "Lakshmi Iyer", "email": "events@iyercaterers.example", "city": "Chennai" }
+]

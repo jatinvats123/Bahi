@@ -1,0 +1,17 @@
+{
+  "id": "s2-denied",
+  "scenario": "S2",
+  "title": "Invoice above approval limit, denied in Slack",
+  "steps": [
+    { "atMs": 0, "event": { "type": "run_started", "command": "Verma Sweets ko 80,000 ka invoice bhejo", "inputMode": "voice", "mode": "mock" } },
+    { "atMs": 420, "event": { "type": "intent", "source": "llm", "label": "create_invoice", "confidence": 0.92, "ms": 398 } },
+    { "atMs": 900, "event": { "type": "tool_call", "callId": "c1", "integration": "notion", "tool": "notion.ledger.find_client", "inputSummary": "Verma Sweets" } },
+    { "atMs": 1300, "event": { "type": "tool_result", "callId": "c1", "ok": true, "summary": "Verma Sweets, orders@vermasweets.example", "ms": 301, "retries": 0 } },
+    { "atMs": 1700, "event": { "type": "tool_call", "callId": "c2", "integration": "paypal", "tool": "paypal.invoice.create", "inputSummary": "₹80,000 for Diwali order catalogue" } },
+    { "atMs": 2000, "event": { "type": "policy", "callId": "c2", "decision": "approval_required", "policyId": "invoice-approval-over-threshold", "message": "₹50,000 se upar ke invoice ke liye owner ka approval chahiye." } },
+    { "atMs": 2300, "event": { "type": "approval", "callId": "c2", "status": "pending", "channel": "#approvals" } },
+    { "atMs": 94000, "event": { "type": "approval", "callId": "c2", "status": "denied", "channel": "#approvals", "by": "Jatin" } },
+    { "atMs": 94400, "event": { "type": "speak", "text": "Verma Sweets ka invoice nahi bheja. Approval nahi mila." } },
+    { "atMs": 94600, "event": { "type": "final", "summary": "Approval denied. Koi invoice nahi bana, kuch nahi bheja." } }
+  ]
+}
