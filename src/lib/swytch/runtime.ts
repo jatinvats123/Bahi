@@ -23,6 +23,14 @@ export interface ExecInput {
   body?: unknown;
   params?: Record<string, string | number | boolean>;
   headers?: Record<string, string>;
+  /**
+   * Top-level placeholder for bundle inputs the kernel marks required but fills itself.
+   * Slack's bundle requires a "token" header on chat.postMessage and auth.test; the OAuth
+   * token is injected by Swytchcode, and a top-level `token` only satisfies the validator
+   * (verified 25 Sep 2026: auth.test answered ok with the real workspace). Never put a
+   * real secret here, and never pass it in `params` (that one is sent to Slack as the token).
+   */
+  token?: string;
 }
 
 export interface ExecOptions {

@@ -11,6 +11,9 @@ function slackCheck(data: unknown) {
   return env.success && !env.data.ok ? slackError(env.data.error) : null;
 }
 
+/** Satisfies the bundle's required "token" input; Swytchcode injects the real OAuth token (see ExecInput.token). */
+const MANAGED_TOKEN = "swytchcode-managed";
+
 export function createSlackLive(): SlackAdapter {
   const channelIds = new Map<string, string>();
 
@@ -42,7 +45,7 @@ export function createSlackLive(): SlackAdapter {
     const ch = await resolveChannel(channelName, ctx);
     if (!ch.ok) return ch;
     const send = () =>
-      liveCall("slackPost", { body: { channel: ch.value.id, text, unfurl_links: false, unfurl_media: false } }, SlackPostRawSchema, {
+      liveCall("slackPost", { token: MANAGED_TOKEN, body: { channel: ch.value.id, text, unfurl_links: false, unfurl_media: false } }, SlackPostRawSchema, {
         ctx,
         summary: `#${ch.value.name}${kind === "alert" ? " (alert)" : ""}: ${preview(text)}`,
         check: slackCheck,
@@ -51,7 +54,7 @@ export function createSlackLive(): SlackAdapter {
     let r = await send();
     // A bot must be in a channel to post; join once and retry.
     if (!r.ok && r.error.message === "Slack: not_in_channel") {
-      const join = await liveCall("slackJoinChannel", { body: { channel: ch.value.id } }, SlackEnvelopeSchema, { ctx, summary: `#${ch.value.name}`, check: slackCheck });
+      const join = await liveCall("slackJoinChannel", { token: MANAGED_TOKEN, body: { channel: ch.value.id } }, SlackEnvelopeSchema, { ctx, summary: `#${ch.value.name}`, check: slackCheck });
       if (!join.ok) return join;
       r = await send();
     }

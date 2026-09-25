@@ -168,6 +168,14 @@ describe("live adapters build the right Swytchcode calls", () => {
     expect(calls.map((c) => c.tool)).toEqual(["slack.conversations.list.list", "slack.chat.postmessage.create", "slack.conversations.join.create", "slack.chat.postmessage.create"]);
   });
 
+  it("Slack posts carry the top-level token placeholder the bundle requires, never in params", async () => {
+    respond = (tool) => (tool === "slack.conversations.list.list" ? { ok: true, channels: [{ id: "C9", name: "bahi-ops" }] } : { ok: true, channel: "C9", ts: "1.3" });
+    await createSlackLive().postOps("hi");
+    const post = calls.find((c) => c.tool === "slack.chat.postmessage.create");
+    expect(post?.input.token).toBe("swytchcode-managed");
+    expect(post?.input.params?.token).toBeUndefined();
+  });
+
   it("Slack ok:false becomes a failure, not a success", async () => {
     respond = () => ({ ok: false, error: "invalid_auth" });
     const r = await createSlackLive().resolveChannel("bahi-ops");
