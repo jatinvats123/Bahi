@@ -18,11 +18,16 @@ function adf(paragraphs: string[]) {
   };
 }
 
+/** "Deliver: website redesign for Sharma Traders" (Jira summary, max 250 chars). */
+export function deliverySummary(input: Pick<DeliveryTaskInput, "description" | "clientName">): string {
+  return `Deliver: ${input.description} for ${input.clientName}`.slice(0, 250);
+}
+
 export function deliveryIssueFields(input: DeliveryTaskInput, projectKey: string) {
   return {
     project: { key: projectKey },
     issuetype: { name: "Task" },
-    summary: `Deliver: ${input.description} (${input.clientName})`.slice(0, 250),
+    summary: deliverySummary(input),
     labels: ["bahi", invoiceLabel(input.invoiceId)],
     description: adf([
       `Payment received from ${input.clientName}: ${formatINR(input.amountInr)}.`,

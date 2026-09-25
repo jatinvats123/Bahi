@@ -54,3 +54,6 @@ __pycache__/
 
 # swytchcode lock files (bundles, tooling.json and manifest.json are committed)
 .swytchcode/**/*.lock
+
+# scratch
+.tmp/

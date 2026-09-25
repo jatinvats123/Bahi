@@ -49,7 +49,7 @@ export default async function LedgerPage() {
               <Figure label="Late" value={formatINR(hisaab.overdue)} tone="text-blocked-ink" />
               <Figure label="Aaj aaya" value={formatINR(hisaab.receivedToday)} tone="text-paid-ink" />
             </dl>
-            <LedgerTable invoices={ledger.invoices} today={istDateKey(now)} />
+            <LedgerTable invoices={ledger.invoices} today={istDateKey(now)} jiraBaseUrl={config.jiraBaseUrl} />
           </>
         )}
       </div>

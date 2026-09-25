@@ -6,7 +6,7 @@ Running log across phases. Update at the end of every phase (see CLAUDE.md secti
 
 - [x] **1. Foundation and design system** (25 Sep 2026)
 - [~] **2. Swytchcode integration layer** (25 Sep 2026): code complete and green in mock mode; live verification waits on the provider connections (see Phase 2 manual steps)
-- [ ] 3. Agent brain and live console
+- [~] **3. Agent brain and live console** (25 Sep 2026): agent, streaming API and UI done; eval 2/2 on S1, S3, S4, S6 in mock mode with the real LLM; live verification waits on `swy login` + provider connections (see Phase 3 manual steps)
 - [ ] 4. Guardrails: policies, approval, block, idempotency, audit
 - [ ] 5. Voice, UX polish, e2e tests
 - [ ] 6. Laya System-1 layer (optional)
@@ -23,6 +23,69 @@ Running log across phases. Update at the end of every phase (see CLAUDE.md secti
 - Tests (27): INR and IST formatting, reducer (full S2 sequence, intermediate AWAITING/APPROVED states, shuffled + reversed delivery, held tool_result until its tool_call arrives, duplicates, other runIds, denied, blocked, error, idle), env parsing, NDJSON round-trip, fixtures + hisaab totals, run store (concurrent saves, upsert, corrupt file recovery).
 - Verified in headless Chrome (playwright-core from scratchpad, not a project dep): 4 routes x light/dark x 1440/390 px, zero console errors, zero horizontal overflow; reduced-motion pass also clean (only Motion's own dev notice).
 - `npm run contrast`: every token pair meets WCAG AA in both themes.
+
+## Phase 3: agent brain and live console (code done; live verification pending)
+
+### Done
+
+- **AI SDK 7 learned first** (`ai@7.0.114`, `@ai-sdk/google@4.0.80`, `@ai-sdk/groq@4.0.48`, `@ai-sdk/provider@4.0.18`): read the shipped docs (tool calling, loop control, lifecycle callbacks, generateText reference) and types. v7 uses `instructions` (not `system`), `stopWhen: [isStepCount(n), hasToolCall(name)]`, `onToolExecutionStart/End`, `onStepEnd`, `LanguageModelV4`. Read the Swytchcode Vercel AI SDK quickstart (it passes raw endpoint tools from `VercelProvider` to `generateText`).
+- **Model ids verified against both live model lists plus a real tool-calling probe**: Gemini `gemini-3.6-flash`, `gemini-3-flash-preview`, `gemini-3.5-flash-lite` (`gemini-2.5-flash` is retired for new users; `3.5/3.7/3.8-flash` answered 503 all day); Groq `openai/gpt-oss-120b`, `qwen/qwen3.8-27b` (all Llama models are gone from Groq). Defaults in `src/lib/agent/defaults.ts`, documented in `.env.example`.
+- **Model fallback** `src/lib/agent/model.ts`: one `LanguageModelV4` that falls back per LLM call (so tools that already ran are never re-run): each Gemini model with `GEMINI_API_KEY` -> same model with `GEMINI_API_KEY_BACKUP` -> each Groq model. Rate limit, 5xx, timeout (30 s per step), network and bad keys fall through; an owner abort never does. Sticky within a run. A rejected key skips every model on that key. If everything is rate limited and a provider says "retry in N s" (N <= 20), it waits once. A model that hits its daily quota cools down for an hour, process-wide. Each switch is a `thinking` event ("Gemini busy hai, backup model (Groq openai/gpt-oss-120b) use kar rahe hain."). 13 unit tests with simulated failures.
+- **Agent tools** `src/lib/agent/tools.ts`: find_client, get_ledger, create_and_send_invoice, check_invoice_status, mark_paid_and_start_delivery, list_inbox, read_email, mark_email_processed, send_payment_reminder, refund_payment, notify_team, daily_brief, plus final_answer (the loop stops on it). Zod schemas, model-facing descriptions, execute() over the phase-2 adapters, never throw. Every underlying Swytchcode call emits its own tool_call/tool_result (create_and_send_invoice = PayPal create, PayPal send, Notion row; list_inbox = list + one get per email).
+- **Code-level guardrails** (the prompt is not the only defence): refunds only when the owner's own command asks for one (an email can never trigger one; guard event); a policy block stops the rest of the batch; the model's amount is checked against the owner's words (`amount.ts`) before any call; invoices de-duplicated per run by an intent key (`bahi-<sha256>`, also written to PayPal `detail.reference` and Notion); paid status only from PayPal; Jira task reused if one exists for the invoice; one Slack summary per run, alerts de-duplicated; reminders never for paid invoices and at most one per day.
+- **Untrusted email**: bodies trimmed to 2,000 characters and fenced in `<untrusted_email>` (the fence cannot be closed from inside, zero-width characters stripped); rule-based injection signals emit a `guard` event and a warning on the email before the model reads it.
+- **Deterministic helpers**: `amount.ts` ("pandrah hazaar", "80k", "1.5 lakh", "sava lakh", "dedh lakh", "saadhe teen hazaar", "ek lakh bees hazaar", Indian digit grouping; "bhej do" is not 2; invoice ids are not amounts); `resolve-client.ts` (aliases, honorifics, Hinglish spellings such as varma/verma, generic words like "traders" never match alone, ambiguous -> candidates, unknown -> not_found); `detectOwnerLanguage` (reply in Hinglish when the owner used it).
+- **Prompt** `prompt.ts`: per run, IST date + weekday, business name, all rules from the brief, max 12 steps, reply language.
+- **Orchestrator** `orchestrator.ts`: stamps runId/seq/ts, streams events, bounded loop, thinking lines from model narration, speak (clamped to 20 words) + final. If the models give out after tools already acted, the run ends with a summary built only from tool results instead of an error. Client abort stops the loop (error event "Aapne run rok diya").
+- **API**: `POST /api/runs` (NDJSON stream, Node runtime, abort-aware, events appended to `data/runs.json` through a throttled persister on the serialized store), `GET /api/runs`, `GET /api/runs/[id]`, `GET /api/ledger`, `GET /api/brief` (15 s cache, `?fresh=1`).
+- **Ledger domain**: Notion gained a `Paid on` date column (`paidOn`), set by markPaid, so "Aaj aaya" works in live mode. A Sent row past its due date counts as overdue. Jira summary is now "Deliver: <work> for <client>". In mock mode the Ledger page reads the mock world, so invoices the agent creates show up.
+- **UI**: `useRun` (POST, line-by-line NDJSON into the reducer, Stop), CommandBar turns Bhejo into Roko while running, skeleton for the next step, inline request errors, stopped notice; example chips prefill S1-S6 (the phase-1 auto-play demo is gone from the Command page); right rail fetches `/api/brief` with skeleton, error + retry, count-up from the previous value after each run; Ledger has search (client, work, invoice, Jira, amount), empty state with reset, PayPal sandbox and Jira links; Activity links every run to `/activity/[id]`, which replays the stored events through the same timeline (compressed gaps, "Seedha poora dikhao", reduced motion shows all). Slack alert posts are labelled "(alert)" in the timeline; result lines that only repeat the verb are hidden. Settings shows the effective model chains and the backup key.
+- **Scripts**: `npm run eval:agent` (mock adapters, real LLM, asserts tool sequences and mock-world side effects, pass/fail table, `--only --runs --pause --verbose`); `npm run scenario -- S1` (live: runs S1, then reads back the PayPal invoice, the Notion row and the Slack post result); `npm run seed:inbox` (live: records a payment on Sharma's open PayPal invoice, creating one if needed, then inserts the three emails through Gmail insert; prints templates if insert is not allowed; `--dry`, `--print`).
+- **Tests**: 202 passing (was 98): amount parser, client resolver, language detection, prompt builder, model fallback (failover, backup key, timeout, abort, stickiness, rate-limit wait, daily-quota cooldown, bad key group), untrusted email, tool schemas and guardrails against the mock world, orchestrator with a scripted model (event order, speak length, status, record).
+
+### Verified
+
+- `npm run eval:agent`: **S1 2/2, S3 2/2, S4 2/2, S6 2/2** (run of 25 Sep, 22:00 IST, mostly served by `gemini-3.5-flash-lite` after the other two Gemini models hit their daily quota; 4-12 s per run).
+- **Groq fallback proven**: `GEMINI_API_KEY=invalid npm run eval:agent -- --only S1 --runs 1` passed through Groq, with the switch visible in the timeline.
+- **From the UI (mock mode, real LLM, headless Chrome)**: S6 and S3 complete with every step streaming in order (S3: guard flag, 2 alerts, Verma invoice, PayPal check, Notion Paid, Jira task, summary, Hinglish reply); Stop mid-S3 stops the server run after 5 calls and the run is saved as stopped; right rail refreshes after the run (₹69,000 -> ₹81,000). All pages at 1440/390 px, light/dark: zero console errors, zero horizontal overflow.
+- `npm run check` green, `npm run build` green.
+
+### Decisions
+
+- **Domain tools over raw Swytchcode tools.** The Swytchcode quickstart hands raw endpoint tools to the model. Bahi keeps the same kernel (every call is still a Swytchcode exec with policies, idempotency and audit) but gives the model domain tools, so it never composes PayPal JSON, and code guardrails sit between the model and the money. Each composite tool still shows every underlying Swytchcode call in the timeline.
+- `final_answer` tool instead of parsing free text: reliable reply + speak split; `hasToolCall("final_answer")` ends the loop.
+- No `intent` event yet: the LLM does not produce a calibrated label or confidence, and inventing one would be dishonest. Laya (phase 6) will emit it.
+- The right rail reads Notion only (cheap on every page load); the spoken daily brief verifies open invoices with PayPal.
+- `maxRetries: 0` on generateText; retries and fallbacks live in `model.ts` so the timeline can explain them.
+- Hinglish stays the default reply language when detection is unsure.
+
+### Docs vs reality
+
+- AI SDK 7 differs from older docs: `instructions`, `isStepCount` (alias `stepCountIs`), `onStepEnd` (was onStepFinish), `LanguageModelV4` with `finishReason: { unified, raw }` and nested usage objects, `toolApproval` replaces `needsApproval`.
+- Gemini free tier is **20 requests per day per model per project** (quota id `GenerateRequestsPerDayPerProjectPerModel-FreeTier`), with a misleading `retryDelay` of about 45 s. Groq free tier: `gpt-oss-120b` 8k tokens/minute, `qwen3.8-27b` 7k input tokens/minute. One agent step sends about 2.5-3.5k tokens.
+- Next 16 dev allows one dev server per project folder (a second `next dev` exits and points at the running one).
+
+### Deviations from spec
+
+- **Live Definition of Done not met yet**: Swytchcode says "login required" and no provider is connected (`swy auth status`: none), so S1/S3/S4/S6 were proven end to end in mock mode (real LLM, mock adapters) and from the UI, not against the sandbox. `npm run scenario -- S1` and `seed:inbox` are ready and refuse politely until live mode works.
+- Slack verification in `scenario` uses the `chat.postMessage` answer (ok + message ts); reading channel history needs `slack.conversations.history.list`, which is not enabled (adding it needs `swy login`).
+- `refund_payment` passes the invoice id as the PayPal capture id. S5 is blocked by policy before any network call, so it is never sent; a real refund would need the capture id from the invoice's payment transactions (phase 4).
+- The phase-1 fixture demo no longer auto-plays on the Command page (it would be mistaken for a real run); sample runs still replay from /activity in mock mode.
+
+### Known issues and risks for phase 4
+
+- **Model quota is the biggest demo risk.** A full S3 run is about 6 LLM calls; the free Gemini quota is 60 calls/day across the three default models. Enable billing or add `GEMINI_API_KEY_BACKUP` before the demo (see manual steps).
+- Approval (S2): `create_and_send_invoice` already maps `approval_required` to an "awaiting approval" result, and the runtime emits the policy/approval events; phase 4 must add the policy, poll the Swytchcode audit log for the decision, then continue (send + Notion + Slack).
+- Tools run in parallel within one step; run state (ledger cache) is not locked. Harmless so far (writes are per row), worth a look when phase 4 adds approvals.
+- `POST /api/runs` has no auth: fine on localhost, never expose it publicly.
+- A dev server from phase 2 was still running on :3100 with a crashed compile worker (every new dynamic route answered 500); it was restarted on the same port.
+
+### Manual steps for Jatin
+
+1. **Model quota (before any demo):** enable billing on the Google AI Studio project of `GEMINI_API_KEY`, or create a second Google Cloud project, create a key at https://aistudio.google.com/apikey and put it in `GEMINI_API_KEY_BACKUP`. Optional: Groq Dev tier.
+2. `swy login` (the Swytchcode session has expired), then the phase-2 manual steps 1-7 (connect PayPal, Gmail, Slack, Notion, Jira; `SWYTCH_MODE=live`; smoke test).
+3. `npm run setup:notion` once more (adds the `Paid on` column).
+4. `npm run seed:inbox`, then `npm run scenario -- S1`, then S1, S3, S4, S6 from the Command page (`npm run dev`).
 
 ## Phase 2: Swytchcode integration layer (code done, live verification pending)
 
@@ -123,7 +186,7 @@ Running log across phases. Update at the end of every phase (see CLAUDE.md secti
 
 ## Known issues
 
-- Mic is visual only (phase 5 wires Web Speech API). Typing a non-example command shows a "agent not connected yet" toast (phase 3).
+- Mic is visual only (phase 5 wires Web Speech API). (Typed commands go to the real agent since phase 3.)
 - S4 (reminders) has no fixture script yet.
 - In full-page screenshots the fixed sidebar/bottom bar appear mid-page; this is a screenshot artefact, not a layout bug.
 - Next dev indicator sits top-right (moved off the Mock data badge); on mobile it overlaps the theme toggle in dev only.

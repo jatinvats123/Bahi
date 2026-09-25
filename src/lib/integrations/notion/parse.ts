@@ -20,6 +20,7 @@ export const LEDGER_PROPERTIES = {
   Issued: "date",
   Due: "date",
   "Last reminder": "date",
+  "Paid on": "date",
   "Jira key": "rich_text",
   "Intent key": "rich_text",
 } as const;
@@ -195,6 +196,7 @@ export function toLedgerRow(page: z.infer<typeof PageRawSchema>): LedgerRow {
     issued: date(p.Issued),
     due: date(p.Due),
     lastReminder: date(p["Last reminder"]),
+    paidOn: date(p["Paid on"]),
     jiraKey: text(p["Jira key"]),
     intentKey: text(p["Intent key"]),
     url: page.url ?? null,
@@ -217,6 +219,7 @@ export function toNotionProperties(row: Partial<LedgerRowInput>): Record<string,
   if (row.issued !== undefined) out.Issued = dt(row.issued);
   if (row.due !== undefined) out.Due = dt(row.due);
   if (row.lastReminder !== undefined) out["Last reminder"] = dt(row.lastReminder);
+  if (row.paidOn !== undefined) out["Paid on"] = dt(row.paidOn);
   if (row.jiraKey !== undefined) out["Jira key"] = rt(row.jiraKey);
   if (row.intentKey !== undefined) out["Intent key"] = rt(row.intentKey);
   return out;

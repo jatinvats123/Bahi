@@ -1,7 +1,7 @@
 "use client";
 
 import { animate, useReducedMotion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatINR, formatNumberIN } from "@/lib/format";
 
 /**
@@ -21,14 +21,19 @@ export function CountUp({
 }) {
   const reduce = useReducedMotion();
   const [shown, setShown] = useState(0);
+  // Where the next animation starts: 0 on mount (SSR and hydration match), the last value after that.
+  const from = useRef(0);
   const fmt = format === "inr" ? formatINR : formatNumberIN;
 
   useEffect(() => {
-    // Reduced motion: jump straight to the value (duration 0). Always start from 0 so SSR and hydration match.
-    const controls = animate(0, value, {
+    // Reduced motion: jump straight to the value (duration 0).
+    const controls = animate(from.current, value, {
       duration: reduce ? 0 : duration,
       ease: [0.16, 1, 0.3, 1],
-      onUpdate: (v) => setShown(Math.round(v)),
+      onUpdate: (v) => {
+        from.current = v;
+        setShown(Math.round(v));
+      },
     });
     return () => controls.stop();
   }, [value, duration, reduce]);

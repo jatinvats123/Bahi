@@ -3,7 +3,7 @@ import { getEnv } from "../../env";
 import { liveCall } from "../live-call";
 import { failure, success, type Outcome } from "../result";
 import type { CallCtx, SlackAdapter, SlackPost } from "../types";
-import { slackError, SlackChannelsRawSchema, SlackEnvelopeSchema, SlackPostRawSchema } from "./parse";
+import { slackError, SlackChannelsRawSchema, SlackEnvelopeSchema, SlackPostRawSchema, preview } from "./parse";
 
 /** Slack answers HTTP 200 {"ok": false, "error": "..."} on failure. */
 function slackCheck(data: unknown) {
@@ -38,13 +38,13 @@ export function createSlackLive(): SlackAdapter {
     return failure({ kind: "not_found", message: `Slack channel #${clean} not found. Create it and invite the Swytchcode Slack app.` }, ms);
   }
 
-  async function post(channelName: string, text: string, ctx?: CallCtx): Promise<Outcome<SlackPost>> {
+  async function post(channelName: string, text: string, ctx?: CallCtx, kind: "update" | "alert" = "update"): Promise<Outcome<SlackPost>> {
     const ch = await resolveChannel(channelName, ctx);
     if (!ch.ok) return ch;
     const send = () =>
       liveCall("slackPost", { body: { channel: ch.value.id, text, unfurl_links: false, unfurl_media: false } }, SlackPostRawSchema, {
         ctx,
-        summary: `#${ch.value.name}`,
+        summary: `#${ch.value.name}${kind === "alert" ? " (alert)" : ""}: ${preview(text)}`,
         check: slackCheck,
         what: "Slack post",
       });
@@ -64,7 +64,7 @@ export function createSlackLive(): SlackAdapter {
     postOps: (text, ctx) => post(getEnv().SLACK_OPS_CHANNEL, text, ctx),
     postAlert: (text, ctx) => {
       const env = getEnv();
-      return post(env.SLACK_ALERTS_CHANNEL ?? env.SLACK_OPS_CHANNEL, text, ctx);
+      return post(env.SLACK_ALERTS_CHANNEL ?? env.SLACK_OPS_CHANNEL, text, ctx, "alert");
     },
   };
 }

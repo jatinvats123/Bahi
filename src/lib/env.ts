@@ -34,8 +34,10 @@ export const EnvSchema = z
   .object({
     GEMINI_API_KEY: optionalString,
     GEMINI_API_KEY_BACKUP: optionalString,
+    /** Comma-separated model ids, tried in order (defaults in src/lib/agent/defaults.ts). */
     GEMINI_MODEL: optionalString,
     GROQ_API_KEY: optionalString,
+    /** Comma-separated model ids, tried in order. */
     GROQ_MODEL: optionalString,
 
     SWYTCH_MODE: z.preprocess(blankToUndefined, z.enum(["live", "mock"], { error: 'must be "live" or "mock"' }).default("mock")),

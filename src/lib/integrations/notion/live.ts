@@ -1,5 +1,6 @@
 import "server-only";
 import { getEnv } from "../../env";
+import { istDateKey } from "../../format";
 import { liveCall } from "../live-call";
 import { failure, success, type Outcome } from "../result";
 import type { CallCtx, LedgerInfo, LedgerRow, NotionAdapter } from "../types";
@@ -165,7 +166,7 @@ export function createNotionLive(): NotionAdapter {
       return success({ ...toLedgerRow(created.value), created: true }, ms + created.ms);
     },
 
-    markPaid: (pageId, ctx) => updatePage(pageId, toNotionProperties({ status: "Paid" }), ctx, "Paid"),
+    markPaid: (pageId, ctx, paidOn = istDateKey(new Date())) => updatePage(pageId, toNotionProperties({ status: "Paid", paidOn }), ctx, "Paid"),
     setLastReminder: (pageId, date, ctx) => updatePage(pageId, toNotionProperties({ lastReminder: date }), ctx, `reminder ${date}`),
   };
 }

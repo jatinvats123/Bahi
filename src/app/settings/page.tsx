@@ -96,13 +96,14 @@ export default async function SettingsPage() {
               action={<BrainIcon size={20} weight="duotone" className="text-ink-soft" aria-hidden />}
             />
             <dl>
-              <Row label="Gemini">
+              <Row label="Gemini" hint="Models kram se aazmaaye jaate hain. Free tier: 20 requests har din har model.">
                 {c.models.gemini.configured ? <Chip tone="paid">Key set</Chip> : <Chip>Key nahi</Chip>}
-                {c.models.gemini.model ? <span className="num ml-2 text-[12.5px] text-ink-soft">{c.models.gemini.model}</span> : null}
+                {c.models.gemini.backupKey ? <Chip tone="paid" className="ml-1.5">Backup key</Chip> : <Chip className="ml-1.5">Backup key nahi</Chip>}
+                <span className="num mt-1 block text-[12.5px] break-words text-ink-soft">{c.models.gemini.model.split(",").join(" > ")}</span>
               </Row>
               <Row label="Groq (fallback)">
                 {c.models.groq.configured ? <Chip tone="paid">Key set</Chip> : <Chip>Key nahi</Chip>}
-                {c.models.groq.model ? <span className="num ml-2 text-[12.5px] text-ink-soft">{c.models.groq.model}</span> : null}
+                <span className="num mt-1 block text-[12.5px] break-words text-ink-soft">{c.models.groq.model.split(",").join(" > ")}</span>
               </Row>
               <Row label="Laya (System 1)" hint="Optional, phase 6. Intent routing, email triage, injection guard.">
                 {c.laya.enabled ? <Chip tone="paid">On</Chip> : <Chip>Off</Chip>}

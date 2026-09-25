@@ -1,5 +1,6 @@
 import { EnvelopeSimpleIcon, KanbanIcon, NotebookIcon, PaypalLogoIcon, SlackLogoIcon } from "@phosphor-icons/react/ssr";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { connection } from "next/server";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Chip } from "@/components/ui/Chip";
@@ -72,7 +73,12 @@ function RunRow({ run }: { run: RunRecord }) {
       <div className="min-w-0 px-[var(--gutter)]">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="font-serif text-[18px] leading-snug text-ink italic">&ldquo;{run.command}&rdquo;</p>
+            <Link
+              href={`/activity/${encodeURIComponent(run.runId)}`}
+              className="rounded font-serif text-[18px] leading-snug text-ink italic decoration-bahi/50 underline-offset-4 hover:underline"
+            >
+              &ldquo;{run.command}&rdquo;
+            </Link>
             <p className="mt-1 text-[13.5px] text-ink-soft">
               <span className="font-semibold text-ink">{STATUS_TEXT[run.status]}.</span> {view.final ?? view.error?.message ?? ""}
             </p>
@@ -95,7 +101,13 @@ function RunRow({ run }: { run: RunRecord }) {
           {run.mode === "mock" ? <Chip tone="pending">Mock</Chip> : null}
         </div>
 
-        <details className="group mt-3">
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+          <Link href={`/activity/${encodeURIComponent(run.runId)}`} className="rounded text-[13px] font-semibold text-bahi-ink underline-offset-4 hover:underline">
+            Replay dekho
+          </Link>
+        </div>
+
+        <details className="group mt-2">
           <summary className="inline-flex cursor-pointer list-none items-center gap-1 rounded text-[13px] font-semibold text-bahi-ink underline-offset-4 hover:underline [&::-webkit-details-marker]:hidden">
             <span className="transition-transform group-open:rotate-90" aria-hidden>
               &rsaquo;
@@ -151,7 +163,7 @@ export default async function ActivityPage() {
       />
 
       {source === "fixtures" ? (
-        <p className="after-margin -mt-2 mb-6 text-[13px] text-pending-ink">Ye sample runs hain (mock data). Asli runs phase 3 se yahan save honge.</p>
+        <p className="after-margin -mt-2 mb-6 text-[13px] text-pending-ink">Ye sample runs hain (mock data). Command page se pehla kaam do; har run yahan save hoga.</p>
       ) : null}
 
       {runs.length === 0 ? (

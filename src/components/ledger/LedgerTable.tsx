@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { ArrowSquareOutIcon, KanbanIcon, MagnifyingGlassIcon, PaypalLogoIcon, XIcon } from "@phosphor-icons/react";
+import { useDeferredValue, useState } from "react";
 import { Chip, ChipButton, type ChipTone } from "@/components/ui/Chip";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
 import { formatDateIST, formatINR } from "@/lib/format";
@@ -50,24 +51,116 @@ function DueCell({ inv, today }: { inv: Invoice; today: string }) {
   return <span className="num text-ink-soft">{keyDate(inv.dueOn)}</span>;
 }
 
-export function LedgerTable({ invoices, today }: { invoices: Invoice[]; today: string }) {
+function matches(inv: Invoice, q: string): boolean {
+  if (!q) return true;
+  const hay = `${inv.clientName} ${inv.description} ${inv.id} ${inv.jiraKey ?? ""} ${inv.amountInr}`.toLowerCase();
+  return q
+    .toLowerCase()
+    .replace(/[₹,]/g, "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((word) => hay.includes(word));
+}
+
+function jiraHref(base: string | null, key: string): string | null {
+  return base ? `${base.replace(/\/+$/, "")}/browse/${encodeURIComponent(key)}` : null;
+}
+
+function Links({ inv, jiraBaseUrl }: { inv: Invoice; jiraBaseUrl: string | null }) {
+  const jira = inv.jiraKey ? jiraHref(jiraBaseUrl, inv.jiraKey) : null;
+  if (!inv.payUrl && !inv.jiraKey) return <span className="text-ink-faint-text">Nahi</span>;
+  const link = "inline-flex items-center gap-1 rounded text-[12.5px] font-semibold text-bahi-ink underline-offset-4 hover:underline";
+  return (
+    <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      {inv.payUrl ? (
+        <a href={inv.payUrl} target="_blank" rel="noreferrer" className={link} aria-label={`PayPal sandbox invoice ${inv.id} (naye tab mein)`}>
+          <PaypalLogoIcon size={14} weight="duotone" aria-hidden />
+          PayPal
+          <ArrowSquareOutIcon size={12} aria-hidden />
+        </a>
+      ) : null}
+      {inv.jiraKey ? (
+        jira ? (
+          <a href={jira} target="_blank" rel="noreferrer" className={link} aria-label={`Jira task ${inv.jiraKey} (naye tab mein)`}>
+            <KanbanIcon size={14} weight="duotone" aria-hidden />
+            <span className="num">{inv.jiraKey}</span>
+            <ArrowSquareOutIcon size={12} aria-hidden />
+          </a>
+        ) : (
+          <span className="num inline-flex items-center gap-1 text-[12.5px] text-ink-soft">
+            <KanbanIcon size={14} weight="duotone" aria-hidden />
+            {inv.jiraKey}
+          </span>
+        )
+      ) : null}
+    </span>
+  );
+}
+
+export function LedgerTable({ invoices, today, jiraBaseUrl = null }: { invoices: Invoice[]; today: string; jiraBaseUrl?: string | null }) {
   const [filter, setFilter] = useState<Filter>("all");
+  const [query, setQuery] = useState("");
+  const q = useDeferredValue(query.trim());
   const active = FILTERS.find((f) => f.id === filter) ?? FILTERS[0]!;
-  const rows = invoices.filter(active.match);
+  const searched = invoices.filter((i) => matches(i, q));
+  const rows = searched.filter(active.match);
 
   return (
     <div>
-      <div role="group" aria-label="Filter" className="flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <ChipButton key={f.id} pressed={filter === f.id} onClick={() => setFilter(f.id)}>
-            {f.label}
-            <span className="num text-[11px] opacity-75">{invoices.filter(f.match).length}</span>
-          </ChipButton>
-        ))}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div role="group" aria-label="Status filter" className="flex flex-wrap gap-2">
+          {FILTERS.map((f) => (
+            <ChipButton key={f.id} pressed={filter === f.id} onClick={() => setFilter(f.id)}>
+              {f.label}
+              <span className="num text-[11px] opacity-75">{searched.filter(f.match).length}</span>
+            </ChipButton>
+          ))}
+        </div>
+        <div className="w-full lg:w-[300px]">
+          <label htmlFor="ledger-search" className="mb-1.5 block text-[13px] font-semibold text-ink-soft">
+            Dhoondho
+          </label>
+          <div className="relative">
+            <MagnifyingGlassIcon size={16} aria-hidden className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-faint-text" />
+            <input
+              id="ledger-search"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Client, kaam, invoice ya Jira"
+              autoComplete="off"
+              className="h-10 w-full rounded-bahi border border-rule bg-paper-raised pr-9 pl-9 text-sm text-ink placeholder:text-ink-faint-text focus-visible:border-ink-faint [&::-webkit-search-cancel-button]:hidden"
+            />
+            {query ? (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Search saaf karo"
+                className="absolute top-1/2 right-2 flex size-6 -translate-y-1/2 items-center justify-center rounded text-ink-soft hover:text-ink"
+              >
+                <XIcon size={14} weight="bold" aria-hidden />
+              </button>
+            ) : null}
+          </div>
+        </div>
       </div>
 
       {rows.length === 0 ? (
-        <p className="mt-6 border-y border-rule py-8 text-center text-sm text-ink-soft">Is filter mein koi invoice nahi.</p>
+        <div className="mt-6 border-y border-rule py-8 text-center">
+          <p className="text-sm text-ink-soft">{q ? `"${q}" se koi invoice nahi mila.` : "Is filter mein koi invoice nahi."}</p>
+          {q || filter !== "all" ? (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setFilter("all");
+              }}
+              className="mt-2 rounded text-[13px] font-semibold text-bahi-ink underline-offset-4 hover:underline"
+            >
+              Sab dikhao
+            </button>
+          ) : null}
+        </div>
       ) : (
         <>
           {/* md and up: ruled table */}
@@ -82,7 +175,8 @@ export function LedgerTable({ invoices, today }: { invoices: Invoice[]; today: s
                   <TH className="text-right">Amount</TH>
                   <TH>Status</TH>
                   <TH>Due</TH>
-                  <TH className="pr-4">Reminder</TH>
+                  <TH>Reminder</TH>
+                  <TH className="pr-4">Links</TH>
                 </tr>
               </THead>
               <TBody>
@@ -105,12 +199,15 @@ export function LedgerTable({ invoices, today }: { invoices: Invoice[]; today: s
                     <TD className="whitespace-nowrap">
                       <DueCell inv={inv} today={today} />
                     </TD>
-                    <TD className="pr-4 whitespace-nowrap">
+                    <TD className="whitespace-nowrap">
                       {inv.lastReminderOn ? (
                         <span className="num text-[12.5px] text-ink-soft">{keyDate(inv.lastReminderOn)}</span>
                       ) : (
                         <span className="text-ink-faint-text">Nahi</span>
                       )}
+                    </TD>
+                    <TD className="pr-4 whitespace-nowrap">
+                      <Links inv={inv} jiraBaseUrl={jiraBaseUrl} />
                     </TD>
                   </TR>
                 ))}
@@ -134,6 +231,11 @@ export function LedgerTable({ invoices, today }: { invoices: Invoice[]; today: s
                   <DueCell inv={inv} today={today} />
                   <span className="num text-[11.5px] text-ink-faint-text">{inv.id}</span>
                 </div>
+                {inv.payUrl || inv.jiraKey ? (
+                  <div className="mt-2">
+                    <Links inv={inv} jiraBaseUrl={jiraBaseUrl} />
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>

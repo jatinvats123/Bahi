@@ -36,6 +36,10 @@ export const InvoiceSchema = z.object({
   dueOn: DateKey,
   paidOn: DateKey.nullable(),
   lastReminderOn: DateKey.nullable(),
+  /** Payer link to the PayPal (sandbox) invoice, when known. */
+  payUrl: z.string().nullable().optional(),
+  /** Jira delivery task key, once the delivery started. */
+  jiraKey: z.string().nullable().optional(),
 });
 export type Invoice = z.infer<typeof InvoiceSchema>;
 

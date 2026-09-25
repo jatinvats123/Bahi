@@ -100,7 +100,7 @@ describe("mock world", () => {
   });
 
   it("notion: upsert by intent key is idempotent", async () => {
-    const row = { client: "Verma Sweets", clientEmail: null, amountInr: 80000, description: "Reels", invoiceId: null, invoiceUrl: null, status: "Awaiting approval" as const, issued: "2026-09-25", due: null, lastReminder: null, jiraKey: null, intentKey: "intent-v1" };
+    const row = { client: "Verma Sweets", clientEmail: null, amountInr: 80000, description: "Reels", invoiceId: null, invoiceUrl: null, status: "Awaiting approval" as const, issued: "2026-09-25", due: null, lastReminder: null, paidOn: null, jiraKey: null, intentKey: "intent-v1" };
     const a = await m.notion.upsertLedgerRow(row);
     const b = await m.notion.upsertLedgerRow({ ...row, status: "Sent" });
     expect(a.ok && a.value.created).toBe(true);

@@ -104,3 +104,28 @@ npm run smoke:swytch -- --write      # also creates one PayPal draft invoice and
 npm run seed:gmail -- --apply        # optional: puts the S3 demo emails in the inbox
 npm run dev                          # Settings page shows the same checks live
 ```
+
+## 9. Agent brain (phase 3)
+
+1. Model keys in `.env.local`: `GEMINI_API_KEY` (https://aistudio.google.com/apikey) and `GROQ_API_KEY` (https://console.groq.com/keys).
+   Free tiers are small: Gemini allows 20 requests per day per model per project, Groq about 8k tokens per minute per model.
+   One inbox run uses about 6 LLM calls. For the demo day, do one of these:
+   - enable billing on the Google AI Studio project (Tier 1 limits are far higher; Flash costs cents), or
+   - create a second Google Cloud project, make a key there and put it in `GEMINI_API_KEY_BACKUP`.
+2. The ledger gained a `Paid on` date column (it powers "Aaj aaya"). Re-run `npm run setup:notion` once; it adds the column without touching rows.
+3. Mock check (no accounts needed): `npm run eval:agent` runs S1, S3, S4, S6 twice each and prints a pass/fail table.
+4. Fallback check: `$env:GEMINI_API_KEY="invalid"; npm run eval:agent -- --only S1 --runs 1 --verbose` shows
+   "Gemini ki key kaam nahi kar rahi, backup model (Groq ...)" in the timeline. Close the terminal afterwards (or `Remove-Item Env:GEMINI_API_KEY`).
+
+## 10. Live scenarios
+
+```powershell
+# SWYTCH_MODE=live in .env.local, all five providers connected (sections 2-6)
+npm run seed:inbox -- --dry     # preview
+npm run seed:inbox              # records a payment on Sharma's open PayPal invoice + inserts 3 emails
+npm run scenario -- S1          # runs S1 live and verifies the PayPal invoice, Notion row and Slack post
+npm run dev                     # then say S1, S3, S4, S6 from the Command page
+```
+
+If Gmail insert is not permitted for the connected account, `seed:inbox` prints the three emails; send them from your
+personal Gmail to `BUSINESS_EMAIL` (or run `npm run seed:inbox -- --print`).

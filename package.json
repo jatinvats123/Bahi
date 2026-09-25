@@ -15,11 +15,18 @@
     "setup:notion": "node --conditions=react-server --import tsx scripts/setup-notion.ts",
     "smoke:swytch": "node --conditions=react-server --import tsx scripts/smoke-swytch.ts",
     "seed:gmail": "node --conditions=react-server --import tsx scripts/seed-gmail.ts",
-    "docs:tools": "tsx scripts/gen-tools-doc.ts"
+    "docs:tools": "tsx scripts/gen-tools-doc.ts",
+    "eval:agent": "node --conditions=react-server --import tsx scripts/eval-agent.ts",
+    "scenario": "node --conditions=react-server --import tsx scripts/scenario.ts",
+    "seed:inbox": "node --conditions=react-server --import tsx scripts/seed-inbox.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.80",
+    "@ai-sdk/groq": "^4.0.48",
+    "@ai-sdk/provider": "^4.0.18",
     "@phosphor-icons/react": "^2.1.10",
     "@swytchcode/runtime": "^1.1.6",
+    "ai": "^7.0.114",
     "motion": "^13.4.4",
     "next": "16.3.6",
     "react": "19.2.8",

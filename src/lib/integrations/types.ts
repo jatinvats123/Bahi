@@ -181,6 +181,8 @@ export const LedgerRowSchema = z.object({
   issued: DateKey.nullable(),
   due: DateKey.nullable(),
   lastReminder: DateKey.nullable(),
+  /** IST date the payment was recorded (Notion "Paid on"). Null until paid; older ledgers may lack the column. */
+  paidOn: DateKey.nullable().default(null),
   jiraKey: z.string().nullable(),
   intentKey: z.string().nullable(),
   url: z.string().nullable(),
@@ -205,7 +207,8 @@ export interface NotionAdapter {
   findByIntentKey(intentKey: string, ctx?: CallCtx): Promise<Outcome<LedgerRow | null>>;
   /** Update the row with the same intent key (or invoice id), else create it. */
   upsertLedgerRow(row: LedgerRowInput, ctx?: CallCtx): Promise<Outcome<LedgerRow & { created: boolean }>>;
-  markPaid(pageId: string, ctx?: CallCtx): Promise<Outcome<LedgerRow>>;
+  /** Status Paid and "Paid on" = paidOn (IST date key, default today). */
+  markPaid(pageId: string, ctx?: CallCtx, paidOn?: string): Promise<Outcome<LedgerRow>>;
   setLastReminder(pageId: string, date: string, ctx?: CallCtx): Promise<Outcome<LedgerRow>>;
 }
 

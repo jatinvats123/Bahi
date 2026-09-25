@@ -84,6 +84,7 @@ function seed(now: Date): MockWorld {
       issued: inv.issuedOn,
       due: inv.dueOn,
       lastReminder: inv.lastReminderOn,
+      paidOn: inv.paidOn,
       jiraKey: null,
       intentKey: `mock-${inv.id}`,
       url: null,

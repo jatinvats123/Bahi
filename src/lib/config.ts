@@ -1,4 +1,5 @@
 import "server-only";
+import { DEFAULT_GEMINI_MODELS, DEFAULT_GROQ_MODELS } from "./agent/defaults";
 import { getEnv } from "./env";
 
 /**
@@ -14,8 +15,11 @@ export interface PublicConfig {
   slackOpsChannel: string;
   slackApprovalsChannel: string;
   jiraProjectKey: string;
+  /** Jira Cloud site for "browse" links (not a secret). */
+  jiraBaseUrl: string | null;
   laya: { enabled: boolean; url: string };
-  models: { gemini: { configured: boolean; model: string | null }; groq: { configured: boolean; model: string | null } };
+  /** model: the effective comma-separated chain (env value or the default). */
+  models: { gemini: { configured: boolean; backupKey: boolean; model: string }; groq: { configured: boolean; model: string } };
   notion: { ledgerConfigured: boolean };
   swytch: { transport: "cli" | "sdk"; paypalCurrency: "INR" | "USD"; inrPerUsd: number };
 }
@@ -31,10 +35,11 @@ export function getPublicConfig(): PublicConfig {
     slackOpsChannel: env.SLACK_OPS_CHANNEL,
     slackApprovalsChannel: env.SLACK_APPROVALS_CHANNEL,
     jiraProjectKey: env.JIRA_PROJECT_KEY,
+    jiraBaseUrl: env.JIRA_BASE_URL ?? null,
     laya: { enabled: env.LAYA_ENABLED, url: env.LAYA_URL },
     models: {
-      gemini: { configured: Boolean(env.GEMINI_API_KEY), model: env.GEMINI_MODEL ?? null },
-      groq: { configured: Boolean(env.GROQ_API_KEY), model: env.GROQ_MODEL ?? null },
+      gemini: { configured: Boolean(env.GEMINI_API_KEY), backupKey: Boolean(env.GEMINI_API_KEY_BACKUP), model: env.GEMINI_MODEL ?? DEFAULT_GEMINI_MODELS },
+      groq: { configured: Boolean(env.GROQ_API_KEY), model: env.GROQ_MODEL ?? DEFAULT_GROQ_MODELS },
     },
     notion: { ledgerConfigured: Boolean(env.NOTION_LEDGER_DATABASE_ID || env.NOTION_LEDGER_DATA_SOURCE_ID) },
     swytch: { transport: env.SWYTCH_TRANSPORT, paypalCurrency: env.PAYPAL_CURRENCY, inrPerUsd: env.DEMO_INR_PER_USD },

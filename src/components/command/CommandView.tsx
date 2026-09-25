@@ -1,75 +1,84 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { WarningCircleIcon } from "@phosphor-icons/react";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { LedgerRowSkeleton, LedgerSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
-import { playScript } from "@/lib/demo-player";
-import type { RunScript } from "@/lib/fixtures";
 import type { Hisaab } from "@/lib/ledger";
-import { initialRunState, runReducer } from "@/lib/run-reducer";
 import { CommandBar, type MicState } from "./CommandBar";
 import { ExampleChips } from "./ExampleChips";
-import { RightRail } from "./RightRail";
+import { RightRail, type BriefState } from "./RightRail";
 import { RunTimeline } from "./RunTimeline";
+import { useRun } from "./useRun";
 
-function normalize(text: string): string {
-  return text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+interface BriefResponse extends Hisaab {
+  asOf: string;
+}
+
+async function fetchBrief(fresh: boolean): Promise<BriefState> {
+  try {
+    const res = await fetch(`/api/brief${fresh ? "?fresh=1" : ""}`, { cache: "no-store" });
+    const body = (await res.json()) as BriefResponse | { error: string };
+    if (!res.ok || "error" in body) return { status: "error", message: "error" in body ? body.error : "Server ne jawab nahi diya." };
+    return { status: "ready", hisaab: body, asOf: body.asOf };
+  } catch {
+    return { status: "error", message: "Server tak pahunch nahi paaye." };
+  }
 }
 
 /**
- * Command console. Phase 1: runs are played from fixture scripts (mock mode only).
- * Phase 3 replaces playScript with the NDJSON stream from the orchestrator;
- * the reducer and timeline stay the same.
+ * Command console: the owner's command goes to POST /api/runs and every step streams
+ * back into the ledger-style timeline. The right rail reads GET /api/brief and
+ * refreshes after each run.
  */
 export function CommandView({
   businessName,
-  scripts,
-  demoScriptId,
-  hisaab,
   approvalThresholdInr,
   approvalsChannel,
 }: {
   businessName: string;
-  /** Mock scripts; empty in live mode. */
-  scripts: RunScript[];
-  demoScriptId: string;
-  hisaab: Hisaab | null;
   approvalThresholdInr: number;
   approvalsChannel: string;
 }) {
-  const [run, dispatch] = useReducer(runReducer, initialRunState);
-  const [playing, setPlaying] = useState(false);
   const [input, setInput] = useState("");
   const [mic, setMic] = useState<MicState>("idle");
-  const cancelRun = useRef<(() => void) | null>(null);
+  const [brief, setBrief] = useState<BriefState>({ status: "loading" });
+  const [refreshing, setRefreshing] = useState(false);
   const micTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toast = useToast();
 
-  const demoScript = scripts.find((s) => s.id === demoScriptId) ?? null;
-
-  const play = useCallback((script: RunScript) => {
-    cancelRun.current?.();
-    dispatch({ type: "reset" });
-    setPlaying(true);
-    cancelRun.current = playScript(script, {
-      runId: `run_mock_${Date.now().toString(36)}`,
-      onEvent: (event) => dispatch({ type: "event", event }),
-      onDone: () => setPlaying(false),
-    });
-  }, []);
-
-  // Auto-play the S2 demo once so the console never opens empty in mock mode.
+  // First read on mount; setState happens in the promise callback, not in the effect body.
   useEffect(() => {
-    if (!demoScript) return;
-    const t = setTimeout(() => play(demoScript), 700);
+    let alive = true;
+    void fetchBrief(false).then((b) => {
+      if (alive) setBrief(b);
+    });
     return () => {
-      clearTimeout(t);
-      cancelRun.current?.();
+      alive = false;
     };
-  }, [demoScript, play]);
-
-  useEffect(() => () => {
-    if (micTimer.current) clearTimeout(micTimer.current);
   }, []);
+
+  const loadBrief = useCallback(async (fresh: boolean) => {
+    setRefreshing(true);
+    const next = await fetchBrief(fresh);
+    // Keep showing the last good numbers if a refresh fails.
+    setBrief((prev) => (next.status === "error" && prev.status === "ready" ? prev : next));
+    setRefreshing(false);
+  }, []);
+
+  const { view, phase, busy, problem, start, stop } = useRun({ onFinished: () => void loadBrief(true) });
+
+  useEffect(() => {
+    if (phase === "stopped") toast.show({ title: "Run rok diya", body: "Jo kadam ho chuke the woh ho gaye. Poora record Activity page par hai." });
+  }, [phase, toast]);
+
+  useEffect(
+    () => () => {
+      if (micTimer.current) clearTimeout(micTimer.current);
+    },
+    [],
+  );
 
   // Esc stops listening from anywhere on the page.
   useEffect(() => {
@@ -82,19 +91,9 @@ export function CommandView({
   }, [mic]);
 
   function submit(text: string) {
-    const match = scripts.find((s) => {
-      const first = s.steps[0]?.event;
-      return first?.type === "run_started" && normalize(first.command) === normalize(text);
-    });
-    if (match) {
-      play(match);
-      setInput("");
-      return;
-    }
-    toast.show({
-      title: "Agent abhi juda nahi hai",
-      body: "Asli agent phase 3 mein judega. Tab tak example chips se mock run dekho.",
-    });
+    if (busy) return;
+    void start(text, "text");
+    setInput("");
   }
 
   // Voice is designed but not wired yet (phase 5). The states are real; transcription is not.
@@ -121,13 +120,40 @@ export function CommandView({
             <label htmlFor="command-input">Kya karna hai?</label>
           </h1>
           <div className="mt-5 max-w-[860px]">
-            <CommandBar value={input} onChange={setInput} onSubmit={submit} micState={mic} onMic={onMic} busy={playing} />
-            <ExampleChips onPick={setInput} />
+            <CommandBar value={input} onChange={setInput} onSubmit={submit} micState={mic} onMic={onMic} busy={busy} onStop={stop} />
+            <ExampleChips onPick={setInput} disabled={busy} />
+            {problem ? (
+              <p role="alert" className="mt-4 flex items-start gap-2 text-sm text-blocked-ink">
+                <WarningCircleIcon size={18} aria-hidden className="mt-px shrink-0" />
+                <span>
+                  {problem}{" "}
+                  <Link href="/activity" className="font-semibold underline underline-offset-4">
+                    Activity
+                  </Link>
+                </span>
+              </p>
+            ) : null}
           </div>
         </div>
 
         <div className="max-w-[calc(860px+var(--margin-x)+2*var(--gutter))]">
-          <RunTimeline view={run.view} playing={playing} canReplay={demoScript !== null} onReplay={() => demoScript && play(demoScript)} />
+          {phase === "starting" && view.status === "idle" ? (
+            <div className="mt-10 border-t border-ink/70">
+              <LedgerSkeleton rows={2} label="Kaam shuru ho raha hai" />
+            </div>
+          ) : (
+            <RunTimeline view={view} playing={busy} canReplay={false} onReplay={() => undefined} />
+          )}
+          {busy && view.status !== "idle" ? (
+            <div role="status" aria-label="Agla kadam aa raha hai">
+              <LedgerRowSkeleton />
+            </div>
+          ) : null}
+          {phase === "stopped" ? (
+            <p className="after-margin mt-3 text-[13px] text-pending-ink">
+              Aapne run rok diya. Jo kadam upar dikh rahe hain woh ho chuke hain.
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -137,8 +163,13 @@ export function CommandView({
       >
         <div className="max-w-[560px] xl:sticky xl:top-12">
           <RightRail
-            hisaab={hisaab}
-            pending={run.view.pendingApprovals}
+            brief={brief}
+            refreshing={refreshing}
+            onRetry={() => {
+              setBrief({ status: "loading" });
+              void loadBrief(true);
+            }}
+            pending={view.pendingApprovals}
             approvalThresholdInr={approvalThresholdInr}
             approvalsChannel={approvalsChannel}
           />

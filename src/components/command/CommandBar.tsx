@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightIcon, MicrophoneIcon, StopIcon } from "@phosphor-icons/react";
+import { ArrowRightIcon, MicrophoneIcon, StopCircleIcon, StopIcon } from "@phosphor-icons/react";
 import { useRef, type FormEvent, type KeyboardEvent } from "react";
 import { Button } from "@/components/ui/Button";
 
@@ -57,13 +57,16 @@ export function CommandBar({
   micState,
   onMic,
   busy,
+  onStop,
 }: {
   value: string;
   onChange: (v: string) => void;
   onSubmit: (v: string) => void;
   micState: MicState;
   onMic: () => void;
+  /** A run is streaming: the send button becomes Stop. */
   busy?: boolean;
+  onStop?: () => void;
 }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -77,7 +80,7 @@ export function CommandBar({
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      submit();
+      if (!busy) submit();
     }
   }
 
@@ -97,16 +100,30 @@ export function CommandBar({
           spellCheck={false}
           className="max-h-40 min-h-14 flex-1 resize-none bg-transparent py-3.5 text-[17px] leading-snug text-ink outline-none [field-sizing:content] placeholder:text-ink-faint-text focus-visible:outline-none md:text-[19px]"
         />
-        <Button type="submit" variant="primary" size="lg" disabled={busy} className="max-sm:hidden">
-          Bhejo
-          <ArrowRightIcon size={18} weight="bold" aria-hidden />
-        </Button>
-        <Button type="submit" variant="primary" size="lg" disabled={busy} className="w-12 px-0 sm:hidden" aria-label="Bhejo">
-          <ArrowRightIcon size={20} weight="bold" aria-hidden />
-        </Button>
+        {busy ? (
+          <>
+            <Button variant="secondary" size="lg" onClick={onStop} className="max-sm:hidden">
+              <StopCircleIcon size={18} weight="fill" aria-hidden className="text-bahi-ink" />
+              Roko
+            </Button>
+            <Button variant="secondary" size="lg" onClick={onStop} className="w-12 px-0 sm:hidden" aria-label="Roko">
+              <StopCircleIcon size={20} weight="fill" aria-hidden className="text-bahi-ink" />
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button type="submit" variant="primary" size="lg" className="max-sm:hidden">
+              Bhejo
+              <ArrowRightIcon size={18} weight="bold" aria-hidden />
+            </Button>
+            <Button type="submit" variant="primary" size="lg" className="w-12 px-0 sm:hidden" aria-label="Bhejo">
+              <ArrowRightIcon size={20} weight="bold" aria-hidden />
+            </Button>
+          </>
+        )}
       </form>
       <p id="mic-status" aria-live="polite" className="mt-2 pl-1 text-[13px] text-ink-soft">
-        {MIC_STATUS[micState]}
+        {busy ? "Kaam chal raha hai. Rokna ho to Roko dabao." : MIC_STATUS[micState]}
       </p>
     </div>
   );

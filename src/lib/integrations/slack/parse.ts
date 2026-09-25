@@ -25,3 +25,9 @@ export const SlackChannelsRawSchema = z
   .loose();
 
 export const SlackPostRawSchema = z.object({ ok: z.literal(true), channel: z.string(), ts: z.string() }).loose();
+
+/** First line of a Slack message for the timeline (never secrets: it is the agent's own text). */
+export function preview(text: string): string {
+  const first = text.split("\n")[0]?.trim() ?? "";
+  return first.length > 90 ? `${first.slice(0, 89)}...` : first;
+}

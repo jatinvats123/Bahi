@@ -202,7 +202,7 @@ function Entry({ entry, status }: { entry: TimelineEntry; status: RunView["statu
           {policyNote ? (
             <Detail className={entry.state === "blocked" || entry.state === "denied" ? "text-blocked-ink" : entry.state === "awaiting" ? "text-pending-ink" : ""}>{policyNote}</Detail>
           ) : null}
-          {entry.result ? (
+          {entry.result && entry.result.summary !== entry.title ? (
             <Detail className="flex items-start gap-1.5 text-ink">
               <ArrowElbowDownRightIcon size={14} className="mt-1 shrink-0 text-ink-faint-text" aria-hidden />
               <span>{entry.result.summary}</span>
@@ -252,11 +252,14 @@ export function RunTimeline({
   playing,
   canReplay,
   onReplay,
+  label = "Abhi ka kaam",
 }: {
   view: RunView;
   playing: boolean;
   canReplay: boolean;
   onReplay: () => void;
+  /** Small heading above the command, e.g. "Purana run" on a replay. */
+  label?: string;
 }) {
   const last = view.entries.at(-1);
 
@@ -289,7 +292,7 @@ export function RunTimeline({
           {view.startedAt ? <span className="num text-[11px] text-ink-faint-text">{formatDateIST(view.startedAt)}</span> : null}
         </div>
         <div className="relative px-[var(--gutter)]">
-          <p className="text-[12.5px] font-semibold text-ink-soft">Abhi ka kaam</p>
+          <p className="text-[12.5px] font-semibold text-ink-soft">{label}</p>
           <h2 id="run-title" className="mt-1 pr-24 font-serif text-[22px] leading-tight text-ink italic md:pr-36 md:text-[28px]">
             &ldquo;{view.command ?? "..."}&rdquo;
           </h2>

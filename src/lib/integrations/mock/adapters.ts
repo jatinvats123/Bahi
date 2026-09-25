@@ -1,6 +1,7 @@
 import { getEnv } from "../../env";
 import { istDateKey } from "../../format";
-import { invoiceLabel } from "../jira/parse";
+import { deliverySummary, invoiceLabel } from "../jira/parse";
+import { preview } from "../slack/parse";
 import { LEDGER_TITLE } from "../notion/parse";
 import { failure, success } from "../result";
 import type { GmailAdapter, JiraAdapter, LedgerRow, NotionAdapter, PaypalAdapter, SlackAdapter } from "../types";
@@ -135,8 +136,8 @@ export function createGmailMock(): GmailAdapter {
 
 export function createSlackMock(): SlackAdapter {
   const channelId = (name: string) => `CMOCK${name.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 8)}`;
-  const post = (name: string, text: string, ctx: Parameters<SlackAdapter["postOps"]>[1]) =>
-    mockCall("slackPost", ctx, `#${name}`, () => {
+  const post = (name: string, text: string, ctx: Parameters<SlackAdapter["postOps"]>[1], kind: "update" | "alert" = "update") =>
+    mockCall("slackPost", ctx, `#${name}${kind === "alert" ? " (alert)" : ""}: ${preview(text)}`, () => {
       const p = { channelId: channelId(name), channelName: name, ts: `${Math.floor(Date.now() / 1000)}.${String(nextId("")).padStart(6, "0")}` };
       mockWorld().slack.push({ ...p, text });
       return success(p);
@@ -146,7 +147,7 @@ export function createSlackMock(): SlackAdapter {
     postOps: (text, ctx) => post(getEnv().SLACK_OPS_CHANNEL, text, ctx),
     postAlert: (text, ctx) => {
       const env = getEnv();
-      return post(env.SLACK_ALERTS_CHANNEL ?? env.SLACK_OPS_CHANNEL, text, ctx);
+      return post(env.SLACK_ALERTS_CHANNEL ?? env.SLACK_OPS_CHANNEL, text, ctx, "alert");
     },
   };
 }
@@ -186,7 +187,7 @@ export function createNotionMock(): NotionAdapter {
         mockWorld().ledger.set(pageId, created);
         return success({ ...created, created: true });
       }),
-    markPaid: (pageId, ctx) => mockCall("notionUpdatePage", ctx, "Paid", () => update(pageId, { status: "Paid" })),
+    markPaid: (pageId, ctx, paidOn = istDateKey(new Date())) => mockCall("notionUpdatePage", ctx, "Paid", () => update(pageId, { status: "Paid", paidOn })),
     setLastReminder: (pageId, date, ctx) => mockCall("notionUpdatePage", ctx, `reminder ${date}`, () => update(pageId, { lastReminder: date })),
   };
 }
@@ -197,7 +198,7 @@ export function createJiraMock(): JiraAdapter {
       mockCall("jiraCreateIssue", ctx, `${input.clientName}: ${input.description}`, () => {
         const w = mockWorld();
         const key = `${getEnv().JIRA_PROJECT_KEY}-${w.jira.length + 17}`;
-        const issue = { id: nextId("100"), key, url: null, summary: `Deliver: ${input.description} (${input.clientName})`, status: "To Do", labels: ["bahi", invoiceLabel(input.invoiceId)] };
+        const issue = { id: nextId("100"), key, url: null, summary: deliverySummary(input), status: "To Do", labels: ["bahi", invoiceLabel(input.invoiceId)] };
         w.jira.push(issue);
         return success({ id: issue.id, key: issue.key, url: issue.url, summary: issue.summary, status: issue.status });
       }),
