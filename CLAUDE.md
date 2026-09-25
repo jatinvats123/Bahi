@@ -46,7 +46,11 @@ Every external action runs through Swytchcode, so money never moves without poli
 - `src/lib/verbs.ts` tool id -> Hinglish verb. `src/lib/fixtures.ts` loads + validates `fixtures/*.json`.
 - `src/lib/demo-player.ts` plays a fixture script as timed RunEvents (mock only).
 - `src/lib/store/runs.ts` run history repository (`data/runs.json`).
-- `src/components/ui` primitives. `src/components/shell` sidebar, bottom bar, theme. `src/components/command` command console.
+- `src/components/ui` primitives. `src/components/shell` sidebar, bottom bar, theme. `src/components/command` command console. `src/components/settings` live integration health card.
+- `src/lib/swytch/` the only door to the outside: `tools.ts` (every canonical id + verbs, client-safe), `runtime.ts` (`execTool`, server-only), `transport.ts` (async CLI spawn or SDK-in-worker), `errors.ts` (ExecError normalization), `project.ts` (.swytchcode reader, PayPal sandbox guard), `sanitize.ts` (fixture scrubbing).
+- `src/lib/integrations/` domain adapters: `types.ts` interfaces + zod domain types, `<provider>/parse.ts` (pure) + `<provider>/live.ts`, `mock/` (world + twins), `index.ts` (`getIntegrations()` by SWYTCH_MODE). Adapters return `Outcome<T>`, never throw.
+- `src/lib/health.ts` + `src/app/api/health/route.ts` integration health. `src/lib/clients.ts` client directory (+ `data/clients.local.json` overrides) and spoken-name matching.
+- `scripts/` swytch-configure, setup-notion, smoke-swytch, seed-gmail, gen-tools-doc (tsx). `docs/TOOLS.md` (generated), `docs/SETUP.md` (live setup clicks).
 
 ## 4. Demo scenarios (acceptance targets for the whole project)
 
@@ -97,7 +101,8 @@ If a design-taste skill is available, use it for every UI decision (the brief's 
 - Windows first: no bash-only scripts; use node scripts or cross-platform npm scripts.
 - If something needs Jatin (login, OAuth, a key), stop, tell him exactly what to click, then continue.
 - RunEvent contract changes: update `src/lib/events.ts`, the reducer, and its tests together. Never break existing event shapes silently.
-- Tool ids in fixtures (`paypal.invoice.create`, etc.) are provisional app-level labels until phase 2 maps them to real Swytchcode canonical ids; update `src/lib/verbs.ts` and fixtures when that happens.
+- Tool ids are real Swytchcode canonical ids, defined once in `src/lib/swytch/tools.ts`. Adding a tool: `swy add <id>` (verify with `swy list tooling`; it sometimes no-ops), add it to `tools.ts`, run `npm run docs:tools`.
+- Never export a function named `then` from a module (it makes the module namespace thenable and `await import()` hangs).
 
 ## 7. Scripts
 
@@ -105,6 +110,7 @@ If a design-taste skill is available, use it for every UI decision (the brief's 
 - `npm run lint` (eslint), `npm run typecheck` (tsc --noEmit), `npm run test` (vitest run)
 - `npm run check` = typecheck + lint + test
 - `npm run contrast` = WCAG contrast report for the colour tokens in globals.css
+- `npm run swytch:configure [-- --apply]`, `setup:notion`, `smoke:swytch [-- --write --record]`, `seed:gmail [-- --apply]`, `docs:tools`
 
 ## 8. End-of-phase protocol (every phase follows it)
 

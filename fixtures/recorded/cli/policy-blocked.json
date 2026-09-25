@@ -1,0 +1,6 @@
+{
+  "_note": "Real swytchcode 2.23.5 exec output captured 25 Sep 2026. Progress and log lines trimmed; request bodies removed.",
+  "exitCode": 6,
+  "stdout": "",
+  "stderr": "2026/09/25 18:21:29 [swytchcode exec] request tool=stripe.create_payment\n{\"error\":\"blocked by policy \\\"big-block\\\": Payments above 1000 are blocked\",\"category\":\"policy_denied\",\"suggested_action\":\"this call was blocked by a configured guard and was not executed - do not retry it or try to work around the guard; report to the user which guard blocked it. A human can review guards with: swytchcode policy list\",\"docs_url\":\"https://docs.swytchcode.com/policies/policy-rules/\"}\n2026/09/25 18:21:29 [swytchcode exec] failed tool=stripe.create_payment exit_code=6 error=policy violation"
+}

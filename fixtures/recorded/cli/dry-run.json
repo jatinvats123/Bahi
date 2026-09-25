@@ -1,0 +1,6 @@
+{
+  "_note": "Real swytchcode 2.23.5 exec output captured 25 Sep 2026. Progress and log lines trimmed; request bodies removed.",
+  "exitCode": 0,
+  "stdout": "{\"headers\":{\"Authorization\":\"[REDACTED]\"},\"method\":\"GET\",\"url\":\"http://localhost/v2/invoicing/invoices/INV2-TEST-1234\"}",
+  "stderr": "2026/09/25 18:17:20 [swytchcode exec] request tool=invoices.invoicing.invoices.get"
+}

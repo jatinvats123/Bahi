@@ -1,0 +1,7 @@
+{
+  "_note": "swytchcode audit policy --json output (NDJSON lines)",
+  "lines": [
+    "{\"id\":\"pol_5b0510655677\",\"tool\":\"stripe.create_payment\",\"policy_id\":\"big-block\",\"status\":\"blocked\",\"requested_at\":1790340689}",
+    "{\"id\":\"64435d426d9f8db85e775d43ca76697e7a129eda5a8177daad522d81416fa6da\",\"tool\":\"stripe.create_payment\",\"policy_id\":\"mid-approve\",\"status\":\"hitl\",\"requested_at\":1790340654}"
+  ]
+}

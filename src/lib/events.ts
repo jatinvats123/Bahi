@@ -59,7 +59,7 @@ export const ToolCallEventSchema = z.object({
   type: z.literal("tool_call"),
   callId: z.string().min(1),
   integration: IntegrationSchema,
-  /** Canonical tool id, e.g. "paypal.invoice.create". Provisional until mapped to Swytchcode ids. */
+  /** Swytchcode canonical tool id, e.g. "invoices.invoicing.invoices.create" (see src/lib/swytch/tools.ts). */
   tool: z.string().min(1),
   inputSummary: z.string(),
 });

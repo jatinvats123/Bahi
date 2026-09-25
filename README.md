@@ -6,11 +6,11 @@ The owner speaks or types in English or Hinglish. Bahi reads the inbox, creates 
 
 Named after the *bahi-khata*, the red cloth ledger Indian traders have kept for centuries.
 
-> Status: phase 1 of 7 (foundation and design system). The UI runs on mock fixtures; integrations and the agent land in later phases. A full README with an architecture diagram arrives in phase 7.
+> Status: phase 2 of 7. The Swytchcode integration layer is in: 35 real Swytchcode tools across PayPal (sandbox), Gmail, Slack, Notion and Jira, typed adapters with mock twins, a live health check and a smoke test. The agent brain lands in phase 3. A full README with an architecture diagram arrives in phase 7.
 
 ## Run it
 
-Requires Node 20.9+ and npm. Windows, macOS and Linux all work.
+Requires Node 22+ and npm. Windows, macOS and Linux all work.
 
 ```powershell
 npm install
@@ -20,6 +20,25 @@ npm run dev                    # http://localhost:3000
 
 In mock mode the app shows a "Mock data" badge and plays a scripted S2 run (an ₹80,000 invoice that needs approval) on the Command page.
 
+For live mode (real sandbox accounts through Swytchcode) follow [docs/SETUP.md](docs/SETUP.md). Every tool Bahi uses is listed in [docs/TOOLS.md](docs/TOOLS.md).
+
+## How integrations work
+
+```
+agent / pages ──> src/lib/integrations/*   typed adapters (PayPal, Gmail, Slack, Notion, Jira)
+                    │  live                  │  mock (SWYTCH_MODE=mock)
+                    ▼                        ▼
+              src/lib/swytch/runtime.ts    in-memory world seeded from fixtures/
+              execTool(): PayPal sandbox guard, timing, RunEvents, normalized errors
+                    │
+                    ▼
+              swytchcode exec <canonical_id> --json   (JSON on stdin)
+              validate -> policies -> credentials -> retries/idempotency -> provider -> audit
+```
+
+No provider API is called directly and no provider secret lives in this repo: Swytchcode keeps credentials in
+`~/.swytchcode/credentials.db`.
+
 ## Scripts
 
 | Script | What it does |
@@ -28,7 +47,12 @@ In mock mode the app shows a "Mock data" badge and plays a scripted S2 run (an �
 | `npm run build` / `npm start` | Production build / serve |
 | `npm run check` | Typecheck + lint + unit tests |
 | `npm run contrast` | WCAG contrast report for the colour tokens |
+| `npm run swytch:configure` | Check (and with `-- --apply`, fix) the Swytchcode project: live mode, PayPal pinned to sandbox, idempotency, Jira site |
+| `npm run setup:notion` | Find the Bahi Ledger in Notion and make its schema exact; prints the ids for `.env.local` |
+| `npm run smoke:swytch` | Live check of all 5 integrations, posts to `#bahi-ops`; `-- --write` adds a PayPal draft round trip, `-- --record` saves sanitized responses |
+| `npm run seed:gmail` | Put the S3 demo emails into the connected inbox (`-- --apply`) |
+| `npm run docs:tools` | Regenerate docs/TOOLS.md from the Swytchcode project |
 
 ## Stack
 
-Next.js 16 (App Router, TypeScript strict), Tailwind CSS v4, Motion, Phosphor icons, zod, Vitest. Planned: Vercel AI SDK (Gemini, Groq fallback), Swytchcode runtime (PayPal sandbox, Gmail, Slack, Notion, Jira), Web Speech API, optional Laya System-1 model.
+Next.js 16 (App Router, TypeScript strict), Tailwind CSS v4, Motion, Phosphor icons, zod, Vitest, Swytchcode CLI 2.23.5 + `@swytchcode/runtime`. Planned: Vercel AI SDK (Gemini, Groq fallback), Web Speech API, optional Laya System-1 model.

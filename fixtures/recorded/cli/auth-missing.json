@@ -1,0 +1,6 @@
+{
+  "_note": "Real swytchcode 2.23.5 exec output captured 25 Sep 2026. Progress and log lines trimmed; request bodies removed.",
+  "exitCode": 3,
+  "stdout": "",
+  "stderr": "2026/09/25 18:17:22 [swytchcode exec] request tool=slack.chat.postmessage.create\n{\"error\":\"missing credentials for Slack - run `swytchcode auth connect Slack`\",\"category\":\"auth\",\"suggested_action\":\"to access registry features, run: swytchcode login - local execution works without auth\",\"docs_url\":\"https://docs.swytchcode.com/cli/authentication/\",\"reference_id\":\"SWY-ERR-4509B5\"}\n2026/09/25 18:17:22 [swytchcode exec] failed tool=slack.chat.postmessage.create exit_code=3 error=missing credentials for Slack - run `swytchcode auth connect Slack`"
+}

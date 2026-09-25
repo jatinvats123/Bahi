@@ -1,0 +1,23 @@
+{
+  "_note": "SAMPLE in the provider's documented response shape (not a live capture). Live captures from `npm run smoke:swytch -- --record` sit next to it without the .sample suffix.",
+  "data": {
+    "ok": true,
+    "channels": [
+      {
+        "id": "C0001",
+        "name": "general",
+        "is_member": true,
+        "is_archived": false
+      },
+      {
+        "id": "C0002",
+        "name": "bahi-ops",
+        "is_member": false,
+        "is_archived": false
+      }
+    ],
+    "response_metadata": {
+      "next_cursor": ""
+    }
+  }
+}

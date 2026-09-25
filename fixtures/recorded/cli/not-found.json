@@ -1,0 +1,6 @@
+{
+  "_note": "Real swytchcode 2.23.5 exec output captured 25 Sep 2026. Progress and log lines trimmed; request bodies removed.",
+  "exitCode": 2,
+  "stdout": "",
+  "stderr": "running in demo mode (paypal.invoices.create not added yet)\n   run: swytchcode add method paypal.invoices.create\n2026/09/25 18:08:33 [swytchcode exec] request tool=paypal.invoices.create\n{\"error\":\"tool \\\"paypal.invoices.create\\\" is not configured in this project's tooling.json. Run: swytchcode get paypal && swytchcode add paypal.invoices.create\",\"category\":\"not_found\",\"suggested_action\":\"run: swytchcode list methods to find available tools, or swytchcode add method <canonical_id>\",\"docs_url\":\"https://docs.swytchcode.com/cli/tools/\"}"
+}

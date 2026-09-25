@@ -17,6 +17,7 @@ export interface PublicConfig {
   laya: { enabled: boolean; url: string };
   models: { gemini: { configured: boolean; model: string | null }; groq: { configured: boolean; model: string | null } };
   notion: { ledgerConfigured: boolean };
+  swytch: { transport: "cli" | "sdk"; paypalCurrency: "INR" | "USD"; inrPerUsd: number };
 }
 
 export function getPublicConfig(): PublicConfig {
@@ -35,6 +36,7 @@ export function getPublicConfig(): PublicConfig {
       gemini: { configured: Boolean(env.GEMINI_API_KEY), model: env.GEMINI_MODEL ?? null },
       groq: { configured: Boolean(env.GROQ_API_KEY), model: env.GROQ_MODEL ?? null },
     },
-    notion: { ledgerConfigured: Boolean(env.NOTION_LEDGER_DATABASE_ID) },
+    notion: { ledgerConfigured: Boolean(env.NOTION_LEDGER_DATABASE_ID || env.NOTION_LEDGER_DATA_SOURCE_ID) },
+    swytch: { transport: env.SWYTCH_TRANSPORT, paypalCurrency: env.PAYPAL_CURRENCY, inrPerUsd: env.DEMO_INR_PER_USD },
   };
 }

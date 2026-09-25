@@ -1,0 +1,55 @@
+{
+  "_note": "SAMPLE in the provider's documented response shape (not a live capture). Live captures from `npm run smoke:swytch -- --record` sit next to it without the .sample suffix.",
+  "data": {
+    "id": "msg_001",
+    "threadId": "thr_001",
+    "labelIds": [
+      "INBOX",
+      "UNREAD",
+      "CATEGORY_PERSONAL"
+    ],
+    "snippet": "We have paid invoice INV-2026-0131 for the product catalogue shoot",
+    "internalDate": "1790326800000",
+    "payload": {
+      "mimeType": "multipart/alternative",
+      "headers": [
+        {
+          "name": "From",
+          "value": "Anil Gupta <user_003@example.com>"
+        },
+        {
+          "name": "To",
+          "value": "user_001@example.com"
+        },
+        {
+          "name": "Subject",
+          "value": "Payment done for catalogue shoot (INV-2026-0131)"
+        },
+        {
+          "name": "Date",
+          "value": "Fri, 25 Sep 2026 12:30:00 +0530"
+        },
+        {
+          "name": "Message-ID",
+          "value": "<abc123@mail.example.com>"
+        }
+      ],
+      "parts": [
+        {
+          "mimeType": "text/plain",
+          "body": {
+            "size": 120,
+            "data": "TmFtYXN0ZSwNCg0KV2UgaGF2ZSBwYWlkIGludm9pY2UgSU5WLTIwMjYtMDEzMSB0aHJvdWdoIFBheVBhbCB0b2RheS4NCg0KUmVnYXJkcywNCkFuaWwgR3VwdGE"
+          }
+        },
+        {
+          "mimeType": "text/html",
+          "body": {
+            "size": 140,
+            "data": "PHA-TmFtYXN0ZSw8L3A-PHA-V2UgaGF2ZSBwYWlkIGludm9pY2UgSU5WLTIwMjYtMDEzMSB0aHJvdWdoIFBheVBhbCB0b2RheS48L3A-"
+          }
+        }
+      ]
+    }
+  }
+}

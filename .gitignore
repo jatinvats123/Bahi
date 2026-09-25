@@ -49,3 +49,8 @@ data/*.tmp
 .venv/
 __pycache__/
 *.pyc
+
+.swytchcode/workspace.json
+
+# swytchcode lock files (bundles, tooling.json and manifest.json are committed)
+.swytchcode/**/*.lock

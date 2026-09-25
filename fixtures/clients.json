@@ -1,7 +1,7 @@
 [
-  { "id": "cl_sharma", "name": "Sharma Traders", "contact": "Rakesh Sharma", "email": "accounts@sharmatraders.example", "city": "Kanpur" },
-  { "id": "cl_verma", "name": "Verma Sweets", "contact": "Neha Verma", "email": "orders@vermasweets.example", "city": "Jaipur" },
-  { "id": "cl_gupta", "name": "Gupta Electronics", "contact": "Anil Gupta", "email": "billing@guptaelectronics.example", "city": "Lucknow" },
-  { "id": "cl_khanna", "name": "Khanna Tailors", "contact": "Simran Khanna", "email": "hello@khannatailors.example", "city": "Delhi" },
-  { "id": "cl_iyer", "name": "Iyer Caterers", "contact": "Lakshmi Iyer", "email": "events@iyercaterers.example", "city": "Chennai" }
+  { "id": "cl_sharma", "name": "Sharma Traders", "contact": "Rakesh Sharma", "email": "accounts@sharmatraders.example", "city": "Kanpur", "aliases": ["Sharma ji", "Sharma Traders", "Sharma", "Rakesh ji"], "paypalEmail": "sharma.payer@sandbox.example" },
+  { "id": "cl_verma", "name": "Verma Sweets", "contact": "Neha Verma", "email": "orders@vermasweets.example", "city": "Jaipur", "aliases": ["Verma ji", "Verma Sweets", "Verma", "Neha ji"], "paypalEmail": "verma.payer@sandbox.example" },
+  { "id": "cl_gupta", "name": "Gupta Electronics", "contact": "Anil Gupta", "email": "billing@guptaelectronics.example", "city": "Lucknow", "aliases": ["Gupta ji", "Gupta Electronics", "Gupta", "Anil ji"], "paypalEmail": "gupta.payer@sandbox.example" },
+  { "id": "cl_khanna", "name": "Khanna Tailors", "contact": "Simran Khanna", "email": "hello@khannatailors.example", "city": "Delhi", "aliases": ["Khanna ji", "Khanna Tailors", "Khanna"] },
+  { "id": "cl_iyer", "name": "Iyer Caterers", "contact": "Lakshmi Iyer", "email": "events@iyercaterers.example", "city": "Chennai", "aliases": ["Iyer ji", "Iyer Caterers", "Iyer"] }
 ]

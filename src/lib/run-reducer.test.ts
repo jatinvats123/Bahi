@@ -69,7 +69,7 @@ describe("run-reducer: S2 approval flow", () => {
       result: { ok: true, retries: 1, ms: 734 },
     });
     expect(tool(state, "c3")).toMatchObject({ state: "ok", title: "Invoice bheja", stamp: "sent" });
-    expect(tool(state, "c1")).toMatchObject({ state: "ok", title: "Client mila", stamp: null });
+    expect(tool(state, "c1")).toMatchObject({ state: "ok", title: "Ledger dekha", stamp: null });
   });
 
   it("shows AWAITING while the approval is pending", () => {
@@ -77,7 +77,7 @@ describe("run-reducer: S2 approval flow", () => {
     expect(state.view.status).toBe("awaiting_approval");
     expect(state.view.stamp).toBe("awaiting");
     expect(state.view.pendingApprovals).toHaveLength(1);
-    expect(state.view.pendingApprovals[0]).toMatchObject({ callId: "c2", channel: "#approvals", tool: "paypal.invoice.create" });
+    expect(state.view.pendingApprovals[0]).toMatchObject({ callId: "c2", channel: "#approvals", tool: "invoices.invoicing.invoices.create" });
     expect(tool(state, "c2")).toMatchObject({ state: "awaiting", title: "Approval ka intezaar", stamp: "awaiting" });
   });
 
@@ -108,7 +108,7 @@ describe("run-reducer: S2 approval flow", () => {
     expect(state.view.missingSeqs).toEqual([call.seq]);
 
     state = runReducer(state, { type: "event", event: call });
-    expect(tool(state, "c1")).toMatchObject({ state: "ok", title: "Client mila" });
+    expect(tool(state, "c1")).toMatchObject({ state: "ok", title: "Ledger dekha" });
     expect(state.view.missingSeqs).toEqual([]);
   });
 

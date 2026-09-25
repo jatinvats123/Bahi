@@ -1,16 +1,8 @@
-import {
-  BrainIcon,
-  EnvelopeSimpleIcon,
-  KanbanIcon,
-  NotebookIcon,
-  PaypalLogoIcon,
-  ShieldCheckIcon,
-  SlackLogoIcon,
-} from "@phosphor-icons/react/ssr";
-import type { Icon } from "@phosphor-icons/react";
+import { BrainIcon, ShieldCheckIcon } from "@phosphor-icons/react/ssr";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
+import { IntegrationHealthCard } from "@/components/settings/IntegrationHealth";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ThemeSegment } from "@/components/shell/ThemeSegment";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -29,24 +21,6 @@ function Row({ label, children, hint }: { label: string; children: ReactNode; hi
         {hint ? <p className="mt-0.5 text-[12.5px] text-ink-soft">{hint}</p> : null}
       </dd>
     </div>
-  );
-}
-
-function IntegrationRow({ icon: IconCmp, name, does, detail }: { icon: Icon; name: string; does: string; detail?: ReactNode }) {
-  return (
-    <li className="flex items-start gap-3.5 border-b border-rule/70 px-4 py-3.5 last:border-b-0">
-      <span aria-hidden className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-bahi border border-rule bg-paper text-ink">
-        <IconCmp size={19} weight="duotone" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="font-semibold text-ink">{name}</p>
-          <Chip tone="pending">Judna baaki</Chip>
-        </div>
-        <p className="mt-0.5 text-[13px] text-ink-soft">{does}</p>
-        {detail ? <p className="num mt-1 text-[12px] text-ink-faint-text">{detail}</p> : null}
-      </div>
-    </li>
   );
 }
 
@@ -71,32 +45,19 @@ export default async function SettingsPage() {
               <Row label="Mode" hint={c.mode === "mock" ? "Fixtures se data. Koi account nahi chahiye, koi asli call nahi." : "Sandbox accounts par asli calls."}>
                 <span className="num">SWYTCH_MODE={c.mode}</span>
               </Row>
-              <Row label="Connection" hint="Swytchcode runtime aur swy CLI setup phase 2 mein.">
-                Abhi juda nahi
+              <Row label="Execution" hint="Har call Swytchcode kernel se: input check, policy, credentials, retry, audit. Keys kabhi app mein nahi aati.">
+                <span className="num">swytchcode exec ({c.swytch.transport})</span>
+              </Row>
+              <Row label="PayPal currency" hint={c.swytch.paypalCurrency === "USD" ? "Sandbox INR invoice nahi leta, isliye PayPal mein USD. Bahi mein rupaye hi dikhte hain." : undefined}>
+                <span className="num">
+                  {c.swytch.paypalCurrency}
+                  {c.swytch.paypalCurrency === "USD" ? `, 1 USD = ${c.swytch.inrPerUsd} INR (demo rate)` : ""}
+                </span>
               </Row>
             </dl>
           </Card>
 
-          <Card labelledBy="int-title">
-            <CardHeader id="int-title" title="Integrations" hint="Sab Swytchcode ke through. PayPal sirf sandbox." />
-            <ul>
-              <IntegrationRow icon={PaypalLogoIcon} name="PayPal (sandbox)" does="Invoice banana, bhejna, status dekhna. Refund policy ke peeche." detail="currency INR" />
-              <IntegrationRow icon={EnvelopeSimpleIcon} name="Gmail" does="Inbox padhna, clients ko reminder bhejna." detail={c.businessEmail ?? "BUSINESS_EMAIL set nahi"} />
-              <IntegrationRow
-                icon={SlackLogoIcon}
-                name="Slack"
-                does="Team updates aur bade invoice ke liye approval."
-                detail={`#${c.slackOpsChannel}, #${c.slackApprovalsChannel}`}
-              />
-              <IntegrationRow
-                icon={NotebookIcon}
-                name="Notion"
-                does="Ledger: har invoice ki ek row. Source of truth."
-                detail={c.notion.ledgerConfigured ? "ledger database id set hai" : "NOTION_LEDGER_DATABASE_ID set nahi"}
-              />
-              <IntegrationRow icon={KanbanIcon} name="Jira" does="Payment aane par delivery task." detail={`project ${c.jiraProjectKey}`} />
-            </ul>
-          </Card>
+          <IntegrationHealthCard mode={c.mode} />
         </div>
 
         <div className="space-y-6">

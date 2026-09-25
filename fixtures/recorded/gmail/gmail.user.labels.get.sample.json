@@ -1,0 +1,17 @@
+{
+  "_note": "SAMPLE in the provider's documented response shape (not a live capture). Live captures from `npm run smoke:swytch -- --record` sit next to it without the .sample suffix.",
+  "data": {
+    "labels": [
+      {
+        "id": "INBOX",
+        "name": "INBOX",
+        "type": "system"
+      },
+      {
+        "id": "Label_42",
+        "name": "Bahi/Processed",
+        "type": "user"
+      }
+    ]
+  }
+}

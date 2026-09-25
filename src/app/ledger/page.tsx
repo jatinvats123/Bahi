@@ -22,24 +22,25 @@ export default async function LedgerPage() {
   await connection();
   const now = new Date();
   const config = getPublicConfig();
-  const ledger = getLedger(now);
+  const ledger = await getLedger(now);
   const hisaab = summarizeHisaab(ledger.invoices, now);
 
   return (
     <div className="pb-16">
       <PageHeader
         title="Ledger"
-        lead={`${config.businessName} ka khata. Notion ledger is ka asli source hoga; har badlav Swytchcode se hoga.`}
+        lead={`${config.businessName} ka khata. Notion ledger asli source hai; har badlav Swytchcode se hota hai.`}
         margin={<span className="num text-[11px] text-ink-faint-text">{formatDateIST(now)}</span>}
       />
 
       <div className="after-margin max-w-[1180px]">
         {ledger.source === "unavailable" ? (
           <div className="paper-card px-5 py-6">
-            <p className="font-serif text-lg text-ink">Live ledger abhi juda nahi hai.</p>
+            <p className="font-serif text-lg text-ink">Notion ledger padh nahi paaye.</p>
             <p className="mt-1 text-sm text-ink-soft">
-              SWYTCH_MODE=live hai, par Notion ledger phase 2 mein Swytchcode se judega. Demo ke liye SWYTCH_MODE=mock rakho.
+              Settings mein Notion ka status dekho, ya npm run setup:notion chalao. Demo ke liye SWYTCH_MODE=mock rakho.
             </p>
+            {ledger.problem ? <p className="num mt-2 text-[12px] break-words text-ink-faint-text">{ledger.problem}</p> : null}
           </div>
         ) : (
           <>

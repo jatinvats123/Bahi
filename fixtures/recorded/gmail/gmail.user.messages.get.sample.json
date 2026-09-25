@@ -1,0 +1,16 @@
+{
+  "_note": "SAMPLE in the provider's documented response shape (not a live capture). Live captures from `npm run smoke:swytch -- --record` sit next to it without the .sample suffix.",
+  "data": {
+    "messages": [
+      {
+        "id": "msg_001",
+        "threadId": "thr_001"
+      },
+      {
+        "id": "msg_002",
+        "threadId": "thr_002"
+      }
+    ],
+    "resultSizeEstimate": 2
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "_note": "SAMPLE in the provider's documented response shape (not a live capture). Live captures from `npm run smoke:swytch -- --record` sit next to it without the .sample suffix.",
+  "data": {
+    "id": "INV2-AB12-CD34-EF56-GH78",
+    "status": "SENT",
+    "detail": {
+      "invoice_number": "0007",
+      "reference": "intent_abc123",
+      "currency_code": "INR",
+      "invoice_date": "2026-09-25",
+      "payment_term": {
+        "term_type": "DUE_ON_DATE_SPECIFIED",
+        "due_date": "2026-10-10"
+      },
+      "metadata": {
+        "create_time": "2026-09-25T08:44:10Z",
+        "recipient_view_url": "https://www.sandbox.paypal.com/invoice/p/#INV2-AB12-CD34-EF56-GH78",
+        "invoicer_view_url": "https://www.sandbox.paypal.com/invoice/details/INV2-AB12-CD34-EF56-GH78"
+      }
+    },
+    "invoicer": {
+      "business_name": "DukaanSetu",
+      "email_address": "user_001@example.com"
+    },
+    "primary_recipients": [
+      {
+        "billing_info": {
+          "name": {
+            "full_name": "Sharma Traders"
+          },
+          "email_address": "user_002@example.com"
+        }
+      }
+    ],
+    "items": [
+      {
+        "name": "Website redesign",
+        "quantity": "1",
+        "unit_amount": {
+          "currency_code": "INR",
+          "value": "15000.00"
+        }
+      }
+    ],
+    "amount": {
+      "currency_code": "INR",
+      "value": "15000.00",
+      "breakdown": {
+        "item_total": {
+          "currency_code": "INR",
+          "value": "15000.00"
+        }
+      }
+    },
+    "due_amount": {
+      "currency_code": "INR",
+      "value": "15000.00"
+    },
+    "links": [
+      {
+        "href": "https://api-m.sandbox.paypal.com/v2/invoicing/invoices/INV2-AB12-CD34-EF56-GH78",
+        "rel": "self",
+        "method": "GET"
+      }
+    ]
+  }
+}

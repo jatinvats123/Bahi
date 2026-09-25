@@ -20,6 +20,8 @@ describe("env", () => {
       BUSINESS_NAME: "DukaanSetu",
       SLACK_OPS_CHANNEL: "bahi-ops",
       PAYPAL_CURRENCY: "INR",
+      SWYTCH_TRANSPORT: "cli",
+      SWYTCH_TIMEOUT_MS: 45000,
     });
   });
 
@@ -42,9 +44,11 @@ describe("env", () => {
     };
     expect(messageFor({ APPROVAL_THRESHOLD_INR: "abc" })).toMatch(/APPROVAL_THRESHOLD_INR: must be a whole rupee amount/);
     // Cross-field rules run once every field is individually valid (zod 4 behaviour).
-    expect(messageFor({ SWYTCH_MODE: "live" })).toMatch(/GEMINI_API_KEY: live mode needs a model key/);
+    expect(messageFor({ REFUND_BLOCK_THRESHOLD_INR: "9999999" })).toMatch(/REFUND_BLOCK_THRESHOLD_INR: looks too high/);
     expect(messageFor({ SWYTCH_MODE: "live", GROQ_API_KEY: "gsk-secret-value", REFUND_BLOCK_THRESHOLD_INR: "9999999" })).not.toMatch(/gsk-secret-value/);
-    expect(() => parseEnv({ SWYTCH_MODE: "live", GROQ_API_KEY: "k" })).not.toThrow();
+    expect(messageFor({ PAYPAL_CURRENCY: "EUR" })).toMatch(/PAYPAL_CURRENCY: must be "INR" or "USD"/);
+    // Integrations can run live before the agent (phase 3) has a model key.
+    expect(() => parseEnv({ SWYTCH_MODE: "live" })).not.toThrow();
   });
 });
 

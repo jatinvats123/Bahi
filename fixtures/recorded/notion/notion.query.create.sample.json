@@ -1,0 +1,115 @@
+{
+  "_note": "SAMPLE in the provider's documented response shape (not a live capture). Live captures from `npm run smoke:swytch -- --record` sit next to it without the .sample suffix.",
+  "data": {
+    "object": "list",
+    "results": [
+      {
+        "object": "page",
+        "id": "page_001",
+        "url": "https://www.notion.so/Sharma-Traders-page001",
+        "in_trash": false,
+        "properties": {
+          "Client": {
+            "id": "title",
+            "type": "title",
+            "title": [
+              {
+                "type": "text",
+                "plain_text": "Sharma Traders",
+                "text": {
+                  "content": "Sharma Traders"
+                }
+              }
+            ]
+          },
+          "Client Email": {
+            "id": "a1",
+            "type": "email",
+            "email": "user_002@example.com"
+          },
+          "Amount INR": {
+            "id": "a2",
+            "type": "number",
+            "number": 15000
+          },
+          "Description": {
+            "id": "a3",
+            "type": "rich_text",
+            "rich_text": [
+              {
+                "type": "text",
+                "plain_text": "Website redesign",
+                "text": {
+                  "content": "Website redesign"
+                }
+              }
+            ]
+          },
+          "Invoice ID": {
+            "id": "a4",
+            "type": "rich_text",
+            "rich_text": [
+              {
+                "type": "text",
+                "plain_text": "INV2-AB12-CD34-EF56-GH78"
+              }
+            ]
+          },
+          "Invoice URL": {
+            "id": "a5",
+            "type": "url",
+            "url": "https://www.sandbox.paypal.com/invoice/p/#INV2-AB12-CD34-EF56-GH78"
+          },
+          "Status": {
+            "id": "a6",
+            "type": "select",
+            "select": {
+              "id": "s1",
+              "name": "Sent",
+              "color": "blue"
+            }
+          },
+          "Issued": {
+            "id": "a7",
+            "type": "date",
+            "date": {
+              "start": "2026-09-25",
+              "end": null
+            }
+          },
+          "Due": {
+            "id": "a8",
+            "type": "date",
+            "date": {
+              "start": "2026-10-10",
+              "end": null
+            }
+          },
+          "Last reminder": {
+            "id": "a9",
+            "type": "date",
+            "date": null
+          },
+          "Jira key": {
+            "id": "b1",
+            "type": "rich_text",
+            "rich_text": []
+          },
+          "Intent key": {
+            "id": "b2",
+            "type": "rich_text",
+            "rich_text": [
+              {
+                "type": "text",
+                "plain_text": "intent_abc123"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "has_more": false,
+    "next_cursor": null,
+    "type": "page_or_data_source"
+  }
+}

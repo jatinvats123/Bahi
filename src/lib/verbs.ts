@@ -1,9 +1,10 @@
 import type { Integration } from "./events";
+import { toolById } from "./swytch/tools";
 
 /**
- * Hinglish verbs for timeline entries. Keyed by canonical tool id.
- * Tool ids are provisional app-level labels until phase 2 maps them to real
- * Swytchcode canonical ids; update this table when that happens.
+ * Hinglish verbs for timeline entries, keyed by Swytchcode canonical tool id.
+ * The source of truth is src/lib/swytch/tools.ts. The phase-1 provisional ids are
+ * kept as aliases so run history recorded before phase 2 still renders.
  */
 
 export interface ToolVerb {
@@ -21,7 +22,7 @@ export const INTEGRATION_LABEL: Record<Integration, string> = {
   jira: "Jira",
 };
 
-const TOOL_VERBS: Record<string, ToolVerb> = {
+const LEGACY_VERBS: Record<string, ToolVerb> = {
   "paypal.invoice.create": { running: "Invoice bana raha hoon", done: "Invoice banaya" },
   "paypal.invoice.send": { running: "Invoice bhej raha hoon", done: "Invoice bheja" },
   "paypal.invoice.get": { running: "Invoice status dekh raha hoon", done: "Invoice status dekha" },
@@ -34,7 +35,6 @@ const TOOL_VERBS: Record<string, ToolVerb> = {
   "notion.ledger.find_client": { running: "Client dhoondh raha hoon", done: "Client mila" },
   "notion.ledger.query": { running: "Ledger dekh raha hoon", done: "Ledger dekha" },
   "notion.ledger.upsert_row": { running: "Ledger mein likh raha hoon", done: "Ledger mein likha" },
-  "jira.issue.create": { running: "Jira task bana raha hoon", done: "Jira task banaya" },
 };
 
 const FALLBACK: Record<Integration, ToolVerb> = {
@@ -46,10 +46,14 @@ const FALLBACK: Record<Integration, ToolVerb> = {
 };
 
 export function toolVerb(tool: string, integration: Integration): ToolVerb {
-  return TOOL_VERBS[tool] ?? FALLBACK[integration];
+  const def = toolById(tool);
+  if (def) return { running: def.running, done: def.done };
+  return LEGACY_VERBS[tool] ?? FALLBACK[integration];
 }
 
 /** Tools whose success earns a SENT stamp. */
 export function isSendTool(tool: string): boolean {
+  const def = toolById(tool);
+  if (def) return def.sendStamp === true;
   return /(^|\.)send$/.test(tool) || tool.endsWith(".send_reminder");
 }

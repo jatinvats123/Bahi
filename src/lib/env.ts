@@ -39,6 +39,13 @@ export const EnvSchema = z
     GROQ_MODEL: optionalString,
 
     SWYTCH_MODE: z.preprocess(blankToUndefined, z.enum(["live", "mock"], { error: 'must be "live" or "mock"' }).default("mock")),
+    /** cli = async spawn of the native swytchcode binary (default). sdk = @swytchcode/runtime exec() in a worker thread. */
+    SWYTCH_TRANSPORT: z.preprocess(blankToUndefined, z.enum(["cli", "sdk"], { error: 'must be "cli" or "sdk"' }).default("cli")),
+    /** Absolute path to the swytchcode binary. Optional; auto-detected from the global npm install. */
+    SWYTCHCODE_BIN: optionalString,
+    /** Folder holding .swytchcode/. Defaults to the process working directory (the repo root). */
+    SWYTCHCODE_PROJECT_DIR: optionalString,
+    SWYTCH_TIMEOUT_MS: z.preprocess(blankToUndefined, z.coerce.number().int().min(1000).max(300_000).default(45_000)),
 
     APPROVAL_THRESHOLD_INR: inr(50_000),
     REFUND_BLOCK_THRESHOLD_INR: inr(10_000),
@@ -48,22 +55,28 @@ export const EnvSchema = z
 
     NOTION_PARENT_PAGE_ID: optionalString,
     NOTION_LEDGER_DATABASE_ID: optionalString,
+    /** Optional: the ledger's data source id. Resolved from the database when unset. */
+    NOTION_LEDGER_DATA_SOURCE_ID: optionalString,
+    /** Your Jira Cloud site, e.g. https://yourname.atlassian.net (the Swytchcode bundle ships a placeholder). */
+    JIRA_BASE_URL: z.preprocess(blankToUndefined, z.url({ error: "must be a URL like https://yourname.atlassian.net" }).optional()),
     JIRA_PROJECT_KEY: z.preprocess(blankToUndefined, z.string().regex(/^[A-Z][A-Z0-9]+$/, "must be an uppercase Jira key like BAHI").default("BAHI")),
     SLACK_OPS_CHANNEL: channel("bahi-ops"),
     SLACK_APPROVALS_CHANNEL: channel("approvals"),
+    /** Complaints, suspicious mail and blocked actions. Blank = same as SLACK_OPS_CHANNEL. */
+    SLACK_ALERTS_CHANNEL: z.preprocess(
+      (v) => (typeof v === "string" ? v.trim().replace(/^#/, "") : v),
+      z.preprocess(blankToUndefined, z.string().regex(/^[a-z0-9._-]+$/, "must be a Slack channel name like bahi-alerts").optional()),
+    ),
 
     BUSINESS_NAME: withDefault("DukaanSetu"),
     BUSINESS_EMAIL: z.preprocess(blankToUndefined, z.email({ error: "must be an email address" }).optional()),
-    PAYPAL_CURRENCY: z.preprocess(blankToUndefined, z.literal("INR", { error: 'must be "INR"' }).default("INR")),
+    PAYPAL_CURRENCY: z.preprocess(blankToUndefined, z.enum(["INR", "USD"], { error: 'must be "INR" or "USD"' }).default("INR")),
+    /** Only used when PAYPAL_CURRENCY=USD: rupees per dollar for the sandbox invoice amount. */
+    DEMO_INR_PER_USD: z.preprocess(blankToUndefined, z.coerce.number({ error: "must be a number like 83" }).positive().default(83)),
+    /** Email address of the PayPal sandbox business (merchant) account. */
+    PAYPAL_MERCHANT_EMAIL: z.preprocess(blankToUndefined, z.email({ error: "must be an email address" }).optional()),
   })
   .superRefine((env, ctx) => {
-    if (env.SWYTCH_MODE === "live" && !env.GEMINI_API_KEY && !env.GROQ_API_KEY) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["GEMINI_API_KEY"],
-        message: "live mode needs a model key: set GEMINI_API_KEY (or GROQ_API_KEY), or use SWYTCH_MODE=mock",
-      });
-    }
     if (env.REFUND_BLOCK_THRESHOLD_INR > env.APPROVAL_THRESHOLD_INR * 10) {
       ctx.addIssue({
         code: "custom",

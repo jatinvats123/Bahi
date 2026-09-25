@@ -1,0 +1,6 @@
+{
+  "_note": "Real swytchcode 2.23.5 exec output captured 25 Sep 2026. Progress and log lines trimmed; request bodies removed.",
+  "exitCode": 4,
+  "stdout": "",
+  "stderr": "2026/09/25 18:20:02 [swytchcode exec] request tool=stripe.create_payment\n{\"category\":\"network\",\"error\":\"demo service temporarily unavailable: Post \\\"https://api-v2.swytchcode.com/v3/cli/demo/exec\\\": context deadline exceeded\",\"retryable\":true}"
+}

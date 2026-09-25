@@ -1,0 +1,8 @@
+{
+  "_note": "SAMPLE in the provider's documented response shape (not a live capture). Live captures from `npm run smoke:swytch -- --record` sit next to it without the .sample suffix.",
+  "data": {
+    "href": "https://www.sandbox.paypal.com/invoice/p/#INV2-AB12-CD34-EF56-GH78",
+    "rel": "payer-view",
+    "method": "GET"
+  }
+}

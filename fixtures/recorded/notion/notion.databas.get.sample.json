@@ -1,0 +1,19 @@
+{
+  "_note": "SAMPLE in the provider's documented response shape (not a live capture). Live captures from `npm run smoke:swytch -- --record` sit next to it without the .sample suffix.",
+  "data": {
+    "object": "database",
+    "id": "db_001",
+    "title": [
+      {
+        "type": "text",
+        "plain_text": "Bahi Ledger"
+      }
+    ],
+    "data_sources": [
+      {
+        "id": "ds_001",
+        "name": "Bahi Ledger"
+      }
+    ]
+  }
+}

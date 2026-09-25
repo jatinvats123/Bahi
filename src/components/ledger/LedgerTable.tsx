@@ -13,6 +13,7 @@ const STATUS_TONE: Record<InvoiceStatus, ChipTone> = {
   draft: "neutral",
   awaiting_approval: "pending",
   cancelled: "expired",
+  refunded: "expired",
 };
 
 type Filter = "all" | "open" | "overdue" | "paid" | "draft";

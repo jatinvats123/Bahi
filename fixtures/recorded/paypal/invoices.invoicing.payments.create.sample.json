@@ -1,0 +1,6 @@
+{
+  "_note": "SAMPLE in the provider's documented response shape (not a live capture). Live captures from `npm run smoke:swytch -- --record` sit next to it without the .sample suffix.",
+  "data": {
+    "payment_id": "EXTR-86F38350LX4353815"
+  }
+}

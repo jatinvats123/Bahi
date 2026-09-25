@@ -1,0 +1,13 @@
+{
+  "_note": "SAMPLE in the provider's documented response shape (not a live capture). Live captures from `npm run smoke:swytch -- --record` sit next to it without the .sample suffix.",
+  "data": {
+    "ok": true,
+    "channel": "C0002",
+    "ts": "1790326800.000100",
+    "message": {
+      "type": "message",
+      "text": "Bahi smoke test ok",
+      "bot_id": "B0001"
+    }
+  }
+}

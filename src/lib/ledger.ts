@@ -3,7 +3,7 @@ import { istDateKey } from "./format";
 
 /** Ledger domain types. Notion is the source of truth from phase 2; fixtures mirror its shape. */
 
-export const INVOICE_STATUSES = ["draft", "awaiting_approval", "sent", "overdue", "paid", "cancelled"] as const;
+export const INVOICE_STATUSES = ["draft", "awaiting_approval", "sent", "overdue", "paid", "cancelled", "refunded"] as const;
 export const InvoiceStatusSchema = z.enum(INVOICE_STATUSES);
 export type InvoiceStatus = z.infer<typeof InvoiceStatusSchema>;
 
@@ -11,8 +11,13 @@ export const ClientSchema = z.object({
   id: z.string(),
   name: z.string(),
   contact: z.string(),
+  /** Contact email: where Gmail reminders go (demo: Gmail plus-aliases). */
   email: z.email(),
   city: z.string(),
+  /** How the owner says the name, e.g. "Sharma ji". Used to resolve spoken commands. */
+  aliases: z.array(z.string()).default([]),
+  /** PayPal sandbox personal (payer) account that receives the invoice. Falls back to `email`. */
+  paypalEmail: z.email().optional(),
 });
 export type Client = z.infer<typeof ClientSchema>;
 
@@ -41,6 +46,7 @@ export const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
   overdue: "Late",
   paid: "Paid",
   cancelled: "Cancelled",
+  refunded: "Refunded",
 };
 
 export interface Hisaab {

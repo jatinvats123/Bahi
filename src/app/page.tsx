@@ -8,7 +8,7 @@ export default async function CommandPage() {
   await connection();
   const config = getPublicConfig();
   const now = new Date();
-  const ledger = getLedger(now);
+  const ledger = await getLedger(now);
 
   return (
     <CommandView

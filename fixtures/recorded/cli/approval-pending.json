@@ -1,0 +1,6 @@
+{
+  "_note": "Real swytchcode 2.23.5 exec output captured 25 Sep 2026. Progress and log lines trimmed; request bodies removed.",
+  "exitCode": 7,
+  "stdout": "",
+  "stderr": "2026/09/25 18:20:54 [swytchcode exec] request tool=stripe.create_payment\n\nPayments over 100 need approval\nApproval requested for stripe.create_payment (policy \"mid-approve\"). Request 64435d426d9f.\n  A background process is watching and will run this command automatically once it is approved - you do not need to run it again.\n  note: the backend did not confirm the request yet (submit approval request: unexpected status 520); it will be retried automatically.\n2026/09/25 18:21:09 [swytchcode exec] failed tool=stripe.create_payment exit_code=7 error=approval pending"
+}
