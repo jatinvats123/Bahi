@@ -26,7 +26,7 @@ import { flag, loadLocalEnv, table } from "./lib/env";
 loadLocalEnv();
 
 const PAYPAL_SANDBOX = "https://api-m.sandbox.paypal.com";
-const root = process.env.SWYTCHCODE_PROJECT_DIR ?? process.cwd();
+const root = process.env.SWYTCHCODE_PROJECT_DIR || process.cwd();
 const toolingPath = path.join(root, ".swytchcode", "tooling.json");
 const manifestPath = path.join(root, ".swytchcode", "integrations", "manifest.json");
 

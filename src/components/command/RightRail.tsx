@@ -1,16 +1,15 @@
 "use client";
 
 import { ArrowClockwiseIcon, HourglassMediumIcon, WarningCircleIcon } from "@phosphor-icons/react";
+import { ApprovalCard, type ApprovalCardData } from "@/components/approvals/ApprovalCard";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { CountUp } from "@/components/ui/CountUp";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Stamp } from "@/components/ui/Stamp";
 import { formatINR, formatTimeIST } from "@/lib/format";
 import type { Hisaab } from "@/lib/ledger";
 import type { PendingApproval } from "@/lib/run-reducer";
-import { INTEGRATION_LABEL } from "@/lib/verbs";
 
 function Figure({ label, value, count, tone, noun }: { label: string; value: number; count: number; tone: string; noun: string }) {
   return (
@@ -48,6 +47,8 @@ export function RightRail({
   onRetry,
   refreshing,
   pending,
+  desk,
+  onDecided,
   approvalThresholdInr,
   approvalsChannel,
 }: {
@@ -56,10 +57,17 @@ export function RightRail({
   /** Numbers are being re-read after a run. */
   refreshing?: boolean;
   pending: PendingApproval[];
+  /** Approvals from every run (GET /api/approvals): pending and recently decided. */
+  desk: { pending: ApprovalCardData[]; recent: ApprovalCardData[] };
+  onDecided: () => void;
   approvalThresholdInr: number;
   approvalsChannel: string;
 }) {
   const reduce = useReducedMotion();
+  // The current run's pending approvals (live, from the stream) win over the polled copies.
+  const live: ApprovalCardData[] = pending.map((p) => ({ ...p, summary: p.inputSummary }));
+  const liveIds = new Set(live.map((p) => p.approvalId).filter(Boolean));
+  const cards = [...live, ...desk.pending.filter((a) => !liveIds.has(a.approvalId)), ...desk.recent.filter((a) => !liveIds.has(a.approvalId))];
   return (
     <div className="space-y-5">
       <Card labelledBy="hisaab-title">
@@ -99,31 +107,24 @@ export function RightRail({
         <CardHeader
           id="approvals-title"
           title="Approval ka intezaar"
-          hint={`${formatINR(approvalThresholdInr)} se upar ke invoice Slack #${approvalsChannel} mein approve hote hain`}
+          hint={`${formatINR(approvalThresholdInr)} se upar ka invoice Swytchcode rok leta hai jab tak owner approve na kare. Suchna Slack #${approvalsChannel} mein.`}
         />
         <div aria-live="polite">
           <AnimatePresence initial={false}>
-            {pending.map((p) => (
+            {cards.map((c) => (
               <motion.div
-                key={p.callId}
+                key={c.approvalId ?? c.since}
                 initial={reduce ? false : { opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduce ? { opacity: 0 } : { opacity: 0, y: -4 }}
                 transition={{ duration: 0.18, ease: "easeOut" }}
-                className="flex items-start justify-between gap-3 px-4 py-3.5"
+                className="px-3 py-2.5"
               >
-                <div className="min-w-0">
-                  <p className="font-serif text-[16px] leading-snug text-ink">{p.inputSummary}</p>
-                  <p className="mt-1 text-[12.5px] text-ink-soft">
-                    {INTEGRATION_LABEL[p.integration]}, Slack {p.channel}
-                    <span className="num ml-1.5 text-ink-faint-text">{formatTimeIST(p.since)}</span>
-                  </p>
-                </div>
-                <Stamp kind="awaiting" size="sm" className="mt-1 shrink-0" />
+                <ApprovalCard data={c} compact onDecided={onDecided} />
               </motion.div>
             ))}
           </AnimatePresence>
-          {pending.length === 0 ? (
+          {cards.length === 0 ? (
             <p className="flex items-center gap-2 px-4 py-4 text-sm text-ink-soft">
               <HourglassMediumIcon size={16} aria-hidden className="text-ink-faint-text" />
               Koi approval baaki nahi.

@@ -108,8 +108,8 @@ describe("Gmail", () => {
 
   it("builds an RFC 822 message without header injection", () => {
     const raw = buildRfc822({ to: "a@b.in\r\nBcc: evil@x.com", subject: "Yaad dilana: ₹15,000", text: "Namaste\nShukriya" });
-    expect(raw).toContain("To: a@b.in Bcc: evil@x.com\r\n");
-    expect(raw).not.toMatch(/\r\nBcc:/);
+    expect(raw).toMatch(/^To: a@b\.in bcc: evil@x\.com *\r\nSubject: /);
+    expect(raw).not.toMatch(/\r\nBcc:/i);
     expect(raw).toContain("Subject: =?UTF-8?B?");
     expect(raw.endsWith("Namaste\r\nShukriya")).toBe(true);
     expect(decodeBase64Url(Buffer.from("héllo").toString("base64url"))).toBe("héllo");

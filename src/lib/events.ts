@@ -71,7 +71,10 @@ export const ToolResultEventSchema = z.object({
   ok: z.boolean(),
   summary: z.string(),
   ms: z.number().nonnegative(),
+  /** Retries Swytchcode reported for this call. 0 unless it actually reported some. */
   retries: z.number().int().nonnegative(),
+  /** Small labels for the timeline, e.g. "idempotent". Optional (added in phase 4). */
+  tags: z.array(z.string()).optional(),
 });
 
 export const PolicyDecisionSchema = z.enum(["allowed", "approval_required", "blocked"]);
@@ -98,6 +101,28 @@ export const ApprovalEventSchema = z.object({
   channel: z.string(),
   /** Who decided, when known. */
   by: z.string().optional(),
+  // Phase 4 details for the approval card (all optional, so older runs still parse).
+  /** Bahi approval id (apr_...), used by the approve / deny buttons. */
+  approvalId: z.string().optional(),
+  /** Who holds the call: Bahi's approval desk (Swytchcode gate policy) or Swytchcode HITL. */
+  via: z.enum(["bahi", "swytchcode"]).optional(),
+  policyId: z.string().optional(),
+  client: z.string().optional(),
+  amountInr: z.number().optional(),
+  description: z.string().optional(),
+  /** Plain-language line from swy exec --explain: what runs if approved. */
+  explain: z.string().optional(),
+  expiresAt: z.iso.datetime({ offset: true }).optional(),
+});
+
+/** Keep-alive while the run waits (e.g. for an approval). The reducer ignores it. */
+export const HeartbeatEventSchema = z.object({
+  ...base,
+  type: z.literal("heartbeat"),
+  /** What the run is waiting for, e.g. "approval". */
+  waitingFor: z.string(),
+  /** Seconds waited so far. */
+  waitedSec: z.number().nonnegative(),
 });
 
 export const GuardEventSchema = z.object({
@@ -139,6 +164,7 @@ export const RunEventSchema = z.discriminatedUnion("type", [
   SpeakEventSchema,
   FinalEventSchema,
   ErrorEventSchema,
+  HeartbeatEventSchema,
 ]);
 
 export type RunEvent = z.infer<typeof RunEventSchema>;
@@ -164,6 +190,7 @@ export const RunEventDraftSchema = z.discriminatedUnion("type", [
   SpeakEventSchema.omit({ runId: true, seq: true, ts: true }),
   FinalEventSchema.omit({ runId: true, seq: true, ts: true }),
   ErrorEventSchema.omit({ runId: true, seq: true, ts: true }),
+  HeartbeatEventSchema.omit({ runId: true, seq: true, ts: true }),
 ]);
 
 /** Parse one NDJSON line. Returns null (never throws) for blank or invalid lines. */

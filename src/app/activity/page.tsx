@@ -2,10 +2,14 @@ import { EnvelopeSimpleIcon, KanbanIcon, NotebookIcon, PaypalLogoIcon, SlackLogo
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
+import { AuditTable, type AuditFilters } from "@/components/activity/AuditTable";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Chip } from "@/components/ui/Chip";
 import { Stamp } from "@/components/ui/Stamp";
 import { getRunHistory } from "@/lib/data";
+import { getEnv } from "@/lib/env";
+import { loadAudit } from "@/lib/guardrails/audit";
+import { swytchcodeText } from "@/lib/swytch/runtime";
 import type { Integration, RunEvent } from "@/lib/events";
 import { dayLabelIST, formatDuration, formatTimeIST, istDateKey } from "@/lib/format";
 import type { RunRecord } from "@/lib/run-record";
@@ -38,11 +42,13 @@ function eventSummary(e: RunEvent): string {
     case "tool_call":
       return `${e.callId} ${e.tool}: ${e.inputSummary}`;
     case "tool_result":
-      return `${e.callId} ${e.ok ? "ok" : "failed"} in ${e.ms} ms, retries ${e.retries}: ${e.summary}`;
+      return `${e.callId} ${e.ok ? "ok" : "failed"} in ${e.ms} ms, retries ${e.retries}${e.tags?.length ? ` [${e.tags.join(", ")}]` : ""}: ${e.summary}`;
     case "policy":
       return `${e.callId} ${e.decision} [${e.policyId}] ${e.message}`;
     case "approval":
-      return `${e.callId} ${e.status} in ${e.channel}${e.by ? ` by ${e.by}` : ""}`;
+      return `${e.callId} ${e.status} in ${e.channel}${e.by ? ` by ${e.by}` : ""}${e.approvalId ? ` (${e.approvalId}, via ${e.via ?? "?"})` : ""}`;
+    case "heartbeat":
+      return `waiting for ${e.waitingFor}, ${Math.round(e.waitedSec)} s`;
     case "guard":
       return `${e.flagged ? "FLAGGED" : "clear"} (${e.source}): ${e.reason}`;
     case "speak":
@@ -144,10 +150,55 @@ function RunRow({ run }: { run: RunRecord }) {
   );
 }
 
-export default async function ActivityPage() {
+const INTEGRATION_FILTERS = ["paypal", "gmail", "slack", "notion", "jira"] as const;
+const DECISION_FILTERS = ["allowed", "approval", "blocked", "failed"] as const;
+
+function pick<T extends string>(value: string | string[] | undefined, allowed: readonly T[]): T | "all" {
+  const v = Array.isArray(value) ? value[0] : value;
+  return v && (allowed as readonly string[]).includes(v) ? (v as T) : "all";
+}
+
+function Tabs({ tab }: { tab: "runs" | "audit" }) {
+  const item = (id: "runs" | "audit", label: string, to: string) => (
+    <Link
+      href={to}
+      aria-current={tab === id ? "page" : undefined}
+      className={`-mb-px border-b-2 px-1 pb-2 text-[15px] font-semibold transition-colors ${tab === id ? "border-bahi text-ink" : "border-transparent text-ink-soft hover:text-ink"}`}
+    >
+      {label}
+    </Link>
+  );
+  return (
+    <nav aria-label="Activity views" className="after-margin mb-6 flex gap-6 border-b border-rule">
+      {item("runs", "Runs", "/activity")}
+      {item("audit", "Audit", "/activity?tab=audit")}
+    </nav>
+  );
+}
+
+export default async function ActivityPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   await connection();
+  const params = await searchParams;
+  const tab = params.tab === "audit" ? "audit" : "runs";
   const now = new Date();
   const { source, runs } = await getRunHistory(now);
+
+  if (tab === "audit") {
+    const filters: AuditFilters = { integration: pick(params.integration, INTEGRATION_FILTERS), decision: pick(params.decision, DECISION_FILTERS) };
+    const env = getEnv();
+    const audit = await loadAudit({
+      projectDir: env.SWYTCHCODE_PROJECT_DIR ?? process.cwd(),
+      runs: source === "live" ? runs : [],
+      policyCli: async () => (await swytchcodeText(["audit", "policy", "--json", "-n", "200"])).stdout,
+    });
+    return (
+      <div className="pb-16">
+        <PageHeader title="Activity" lead="Swytchcode ka audit: har call, har policy faisla, har approval." />
+        <Tabs tab="audit" />
+        <AuditTable rows={audit.rows} filters={filters} note={audit.note} swytchcodeAvailable={audit.swytchcodeAvailable} />
+      </div>
+    );
+  }
 
   const groups = new Map<string, RunRecord[]>();
   for (const run of runs) {
@@ -161,6 +212,7 @@ export default async function ActivityPage() {
         title="Activity"
         lead="Har run ka poora record: kya samjha, kaunsa tool chala, policy ne kya kaha, aur nateeja."
       />
+      <Tabs tab="runs" />
 
       {source === "fixtures" ? (
         <p className="after-margin -mt-2 mb-6 text-[13px] text-pending-ink">Ye sample runs hain (mock data). Command page se pehla kaam do; har run yahan save hoga.</p>

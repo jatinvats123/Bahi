@@ -10,6 +10,7 @@ import { CommandBar, type MicState } from "./CommandBar";
 import { ExampleChips } from "./ExampleChips";
 import { RightRail, type BriefState } from "./RightRail";
 import { RunTimeline } from "./RunTimeline";
+import { useApprovals } from "@/components/approvals/useApprovals";
 import { useRun } from "./useRun";
 
 interface BriefResponse extends Hisaab {
@@ -68,6 +69,7 @@ export function CommandView({
   }, []);
 
   const { view, phase, busy, problem, start, stop } = useRun({ onFinished: () => void loadBrief(true) });
+  const desk = useApprovals();
 
   useEffect(() => {
     if (phase === "stopped") toast.show({ title: "Run rok diya", body: "Jo kadam ho chuke the woh ho gaye. Poora record Activity page par hai." });
@@ -170,6 +172,8 @@ export function CommandView({
               void loadBrief(true);
             }}
             pending={view.pendingApprovals}
+            desk={desk}
+            onDecided={desk.refresh}
             approvalThresholdInr={approvalThresholdInr}
             approvalsChannel={approvalsChannel}
           />

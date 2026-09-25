@@ -55,6 +55,8 @@ export interface CreateInvoiceInput {
   /** Bahi's intent key; stored in the invoice reference for idempotency checks. */
   intentKey?: string;
   note?: string;
+  /** Approval stamp (merchant-only memo) for invoices the owner approved. See guardrails/policies.ts. */
+  approvalMemo?: string;
 }
 
 export interface RecordPaymentInput {
@@ -139,6 +141,8 @@ export interface SlackAdapter {
   postOps(text: string, ctx?: CallCtx): Promise<Outcome<SlackPost>>;
   /** Alerts (complaints, suspicious mail, blocked actions) to SLACK_ALERTS_CHANNEL. */
   postAlert(text: string, ctx?: CallCtx): Promise<Outcome<SlackPost>>;
+  /** Approval requests and decisions to SLACK_APPROVALS_CHANNEL. */
+  postApproval(text: string, ctx?: CallCtx): Promise<Outcome<SlackPost>>;
   /** Channel name to id, resolved once and cached. */
   resolveChannel(name: string, ctx?: CallCtx): Promise<Outcome<{ id: string; name: string }>>;
 }
@@ -186,10 +190,12 @@ export const LedgerRowSchema = z.object({
   jiraKey: z.string().nullable(),
   intentKey: z.string().nullable(),
   url: z.string().nullable(),
+  /** Notion last_edited_time (live only). */
+  updatedAt: z.string().nullable().optional(),
 });
 export type LedgerRow = z.infer<typeof LedgerRowSchema>;
 
-export type LedgerRowInput = Omit<LedgerRow, "pageId" | "url">;
+export type LedgerRowInput = Omit<LedgerRow, "pageId" | "url" | "updatedAt">;
 
 export interface LedgerInfo {
   databaseId: string;

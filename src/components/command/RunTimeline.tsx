@@ -20,6 +20,7 @@ import {
 } from "@phosphor-icons/react";
 import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
+import { ApprovalCard } from "@/components/approvals/ApprovalCard";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { Stamp } from "@/components/ui/Stamp";
@@ -134,12 +135,13 @@ function ToolChips({ e }: { e: ToolEntry }) {
   else if (e.policy.decision === "approval_required") chips.push(<Chip key="sw" tone="approval">Swytchcode: approval chahiye</Chip>);
   else chips.push(<Chip key="sw" tone="blocked">Swytchcode: blocked</Chip>);
 
-  if (e.approval) {
-    const by = e.approval.by ? ` by ${e.approval.by}` : "";
-    if (e.approval.status === "pending") chips.push(<Chip key="ap" tone="pending">Slack {e.approval.channel}</Chip>);
-    else if (e.approval.status === "approved") chips.push(<Chip key="ap" tone="approval">Approved{by}</Chip>);
-    else if (e.approval.status === "denied") chips.push(<Chip key="ap" tone="blocked">Denied{by}</Chip>);
-    else chips.push(<Chip key="ap" tone="expired">Expired</Chip>);
+  // Approval details live on the ApprovalCard below the entry.
+  for (const tag of e.result?.tags ?? []) {
+    chips.push(
+      <Chip key={`tag-${tag}`} tone="zari">
+        {tag}
+      </Chip>,
+    );
   }
   if (e.state === "running") chips.push(<Chip key="run" tone="zari"><span className="animate-pulse">chal raha hai</span></Chip>);
   if (e.result) chips.push(<Chip key="ms" mono>{formatDuration(e.result.ms)}</Chip>);
@@ -207,6 +209,15 @@ function Entry({ entry, status }: { entry: TimelineEntry; status: RunView["statu
               <ArrowElbowDownRightIcon size={14} className="mt-1 shrink-0 text-ink-faint-text" aria-hidden />
               <span>{entry.result.summary}</span>
             </Detail>
+          ) : null}
+          {entry.approval ? (
+            <ApprovalCard
+              data={{
+                ...entry.approval,
+                summary: entry.inputSummary,
+                status: entry.approval.status,
+              }}
+            />
           ) : null}
           <ToolChips e={entry} />
         </Row>

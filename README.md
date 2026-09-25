@@ -20,7 +20,7 @@ npm run dev                    # http://localhost:3000
 
 In mock mode the app shows a "Mock data" badge and plays a scripted S2 run (an ₹80,000 invoice that needs approval) on the Command page.
 
-For live mode (real sandbox accounts through Swytchcode) follow [docs/SETUP.md](docs/SETUP.md). Every tool Bahi uses is listed in [docs/TOOLS.md](docs/TOOLS.md).
+For live mode (real sandbox accounts through Swytchcode) follow [docs/SETUP.md](docs/SETUP.md). Every tool Bahi uses is listed in [docs/TOOLS.md](docs/TOOLS.md). Approvals, blocks, duplicate protection and the audit trail are explained in [docs/GUARDRAILS.md](docs/GUARDRAILS.md).
 
 ## How integrations work
 
@@ -52,6 +52,9 @@ No provider API is called directly and no provider secret lives in this repo: Sw
 | `npm run smoke:swytch` | Live check of all 5 integrations, posts to `#bahi-ops`; `-- --write` adds a PayPal draft round trip, `-- --record` saves sanitized responses |
 | `npm run seed:gmail` | Put the S3 demo emails into the connected inbox (`-- --apply`) |
 | `npm run docs:tools` | Regenerate docs/TOOLS.md from the Swytchcode project |
+| `npm run policies:sync` | Write and validate the Swytchcode policies from code, thresholds and the client list; `-- --probe` checks 15 decisions against the real kernel |
+| `npm run approve` | List pending approvals; `-- <apr_id> [--deny]` decides one (same as the dashboard buttons) |
+| `npm run scenario -- S1|S2|S2-deny|S5|dup|email-guard` | Live sandbox scenarios, each verified against PayPal, Notion and the Swytchcode audit |
 
 ## Stack
 

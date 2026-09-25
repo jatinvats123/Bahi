@@ -7,10 +7,83 @@ Running log across phases. Update at the end of every phase (see CLAUDE.md secti
 - [x] **1. Foundation and design system** (25 Sep 2026)
 - [~] **2. Swytchcode integration layer** (25 Sep 2026): code complete and green in mock mode; live verification waits on the provider connections (see Phase 2 manual steps)
 - [~] **3. Agent brain and live console** (25 Sep 2026): agent, streaming API and UI done; eval 2/2 on S1, S3, S4, S6 in mock mode with the real LLM; live verification waits on `swy login` + provider connections (see Phase 3 manual steps)
-- [ ] 4. Guardrails: policies, approval, block, idempotency, audit
+- [x] **4. Guardrails: policies, approval, block, idempotency, audit** (26 Sep 2026): 3 Swytchcode policies (validated, probed against the kernel), approval desk, blocks, intent keys, Audit tab; S1, S2, S2-deny, S5, dup and email-guard verified live and from the UI. Also closes phase 2 and 3 live verification for S1.
 - [ ] 5. Voice, UX polish, e2e tests
 - [ ] 6. Laya System-1 layer (optional)
 - [ ] 7. Demo hardening and submission
+
+## Phase 4: guardrails (done, verified live)
+
+### Done
+
+- **Real policy API learned first** (docs + probes against swytchcode 2.23.5, all dry-run, no network):
+  - `field` must be flat: `body.items.0.unit_amount.value` fails validation ("dotted paths are not supported in v1"). Top-level inputs and top-level body keys resolve (the validator warns "not an input" for body keys, wrongly).
+  - `contains` / `matches` on `body` see Go's `%v` rendering of the body (`map[k:v ...]`, sorted keys, unquoted strings). Regexes over it read nested amounts. `renderGo()` reproduces it.
+  - `REQUIRES_APPROVAL` is accepted by `swy policy validate`, but the free Developer plan refuses to create the request ("approval requests are not included in your current plan ... The command was not run", exit 6, `swy audit policy` status `failed`). The phase-2 probe had already logged `402: policy_tier is not available`.
+  - A block: exit 6, category `policy_denied`; the exec log records `outcome: policy_violation` with no `network` entries (proof the provider was not called). `swy exec --explain` prints Tool / Provider / Mode / Endpoint on **stderr**, and policies apply to explain too.
+- **Three policies, generated from code** (`src/lib/guardrails/policies.ts`, `npm run policies:sync`, `swy policy validate` clean):
+  - `invoice-approval-over-threshold` on `invoices.invoicing.invoices.create`: amount above ₹50,000 (INR, or USD at DEMO_INR_PER_USD, one regex) and no approval stamp in `detail.memo`.
+  - `block-large-refunds` on `payments.payment.captures.refund`: no amount (full refund) or above ₹10,000. Message exactly as specified.
+  - `email-known-clients-only` on `gmail.user.send.create1`: anchored regex on the base64 of a 3-byte-aligned `To:` line, one alternative per client address (union of fixtures and `data/clients.local.json`, lower-cased, chunked under the 512-char cap). The allowlist is regenerated from the clients file by the same script.
+  - `npm run policies:sync -- --probe`: 15 dry-run decisions from the real kernel all match Bahi's evaluator.
+- **Approval flow** (fallback (b)+(c) of the brief, see Deviations): Swytchcode gate policy + **Bahi approval desk**. The runtime turns a block by the gate policy into `approval_required` (via "bahi"); `create_and_send_invoice` writes a Notion "Awaiting approval" row, creates the approval (`data/approvals.json`, file-backed so a scenario script and the dashboard share it), posts to Slack `#approvals` through Swytchcode, fetches a `swy exec --explain` line for the card, waits up to `APPROVAL_TIMEOUT_SEC` (300) with `heartbeat` events every 10 s, then: approved -> re-issues the create with the stamp (same callId, so one timeline entry goes AWAITING -> APPROVED), send, Notion Sent; denied / expired -> Notion Cancelled, agent stops and tells the owner. `APPROVAL_MODE=swytchcode` switches the policy to `REQUIRES_APPROVAL` and polls `swy audit policy --json` (for a paid plan; untested live).
+- **Runs survive a disconnect**: in-process run bus; `GET /api/runs/:id?tail=1` replays then streams; `POST /api/runs/:id/stop` is the only way to stop (Roko); `GET /api/runs/live`; the Command page reattaches after a reload.
+- **Blocks**: policy events carry the policy's own message; Bahi posts exactly one Slack alert per run about a block (the model's duplicate alerts are skipped); one refund per command (parallel calls included); the batch stops after the first block.
+- **Idempotency**: PayPal dynamic idempotency (`PayPal-Request-Id`) already on for both PayPal libraries; Gmail has no idempotency header, so it stays `none`. App intent key moved to `src/lib/guardrails/intent-key.ts` (normalized description drops filler words; IST date); a Notion row with the key in Awaiting approval / Sent / Paid returns `already_done` with an `idempotent` tag and "Ye invoice aaj 12:51 AM pe already bheja ja chuka hai (INV2-...)". A Draft left by a failed send is re-sent, not duplicated. Reminders: one per invoice per day.
+- **Audit tab** (`/activity?tab=audit`): `swy audit policy --json` + the exec log `swy audit` reads (`~/.swytchcode/audit/*.jsonl`, request args never read into the UI) + run events + approval desk; decision chips, "provider not called", `retry xN` only when the log shows more than one HTTP attempt, link to the run, filters by integration and decision.
+- **Settings > Guardrails**: each policy in plain language with its threshold, active or not, out-of-date warning, approval mode, idempotency per PayPal library.
+- **UI**: `ApprovalCard` (AWAITING / APPROVED / DENIED / EXPIRED stamps, client, INR amount, policy id, Slack channel, countdown, explain line, Approve karein / Mana karein) inline in the timeline and in the right rail (polls `/api/approvals`, so approvals from any run or script show, plus decisions from the last 15 minutes). `idempotent` tag chip.
+- **Contract**: `heartbeat` event (reducer ignores it); optional `tool_result.tags`; optional approval details (`approvalId`, `via`, `policyId`, `client`, `amountInr`, `description`, `explain`, `expiresAt`). Old runs still parse.
+- **Scripts**: `policies:sync [--probe|--check]`, `approve [<id> [--deny]]`, `scenario -- S1 | S2 [--auto] | S2-deny [--manual] | S5 | dup | email-guard`.
+- **Docs**: `docs/GUARDRAILS.md` (each policy, why, how, demo; pitch line), `docs/policies.public.json`.
+- **Tests**: 242 (was 205): gt-regex fuzzed against Number, Go rendering, every policy decision, 512-char split, intent key ("15k" = "15,000" = "pandrah hazaar", "Sharma ji" = "Sharma Traders"), approval store (cross-process, expiry, stop), approve / deny / expire through the tool with reducer stamps and heartbeats, reducer transitions + heartbeat ignored + tags, repeated S1, draft reuse, bulk refund, mock policy parity, plan-refusal and HITL classification, explain parsing, audit parsing and run linking.
+
+### Verified live (26 Sep, 00:45-02:15 IST, sandbox, real LLM)
+
+- `npm run scenario -- email-guard` PASS (blocked, in `swy audit policy`, Gmail never called).
+- `S1` PASS (first fully live S1: PayPal SENT ₹15,000, Notion Sent, Slack ok). `dup` PASS on idempotency (two repeats, `already_done`, same invoice, `idempotent` tag); its "one PayPal invoice per key" check found the draft left by the India-blocked attempt, which led to the draft-reuse fix; the stale draft was deleted.
+- `S5` PASS: BLOCKED, `swy audit policy` entry, PayPal never called, one refund call, one Slack alert.
+- `S2 --auto` PASS: held by the gate (no network), pending -> approved, PayPal SENT ₹80,000, Notion Sent, APPROVED stamp. `S2-deny` PASS: no invoice, Notion Cancelled, DENIED stamp.
+- **From the UI** (headless Chrome, live mode, `next dev -p 3100`): S2 approve by clicking Approve karein -> APPROVED with the explain line; deny from the right rail -> DENIED; S5 -> BLOCKED; repeated S1 -> idempotent, no create call; Audit tab shows real entries (300 rows, 33 blocked); Activity, Settings, Command at 1440 light and 390 dark with zero console errors and no horizontal overflow.
+- `npm run check` green, `npm run build` green.
+
+### Decisions
+
+- Approvals are **enforced by Swytchcode and granted by Bahi**: large invoices cannot reach PayPal without the stamp, and only Bahi's code writes the stamp (the model never composes PayPal JSON). The dashboard is the approve surface: the Swytchcode-managed Slack app has no `channels:history`, so Bahi cannot read replies in Slack; Slack gets the request with the dashboard link and `npm run approve` command.
+- Policies are code, not hand-edited JSON: one source for thresholds, currency conversion and the client allowlist; mock mode enforces the same generated policies with the evaluator the probe checks.
+- The live `policies.json` is gitignored (it encodes Jatin's real demo addresses in base64); `docs/policies.public.json` is committed.
+- Block alerts are posted by Bahi, not left to the model, so there is exactly one.
+
+### Docs vs reality
+
+- The docs show `POLICY_BLOCKED | AUTH_FAILED` as action types and `REQUIRES_APPROVAL` for approvals; the CLI accepts both, but approval needs a paid plan. Docs say a block exits 4; it exits 6.
+- `swy policy validate` warns that top-level body keys "can never match", but they do (probed both ways).
+- `swy exec --explain` output is on stderr; `swy audit policy --json` has no message or args (the exec log does).
+- `swy exec` without `--body` reads JSON from stdin and hangs if stdin stays open: always close stdin.
+- The sandbox refuses to send invoices to Indian PayPal accounts (`INR_FOREIGN_CURRENCY_BLOCKED`: "We're unable to send invoices to customers within India"), even in USD.
+
+### Deviations from spec
+
+- **Human approval is not Swytchcode's Slack HITL** (plan limit). It is the brief's fallback: a Swytchcode gate policy plus a clearly labelled Bahi approval desk (dashboard + Slack notice through Swytchcode + `npm run approve`). `APPROVAL_MODE=swytchcode` is wired for a plan with approvals but was not testable.
+- Caller-chosen idempotency keys are not offered by Swytchcode (dynamic mode generates its own per exec); the intent key goes to PayPal `detail.reference` and Notion instead of the header.
+- `data/clients.local.json`: the `paypalEmail` overrides (Indian sandbox payer accounts) were removed so sends work; backup at `data/clients.local.backup-phase4.json`. Invoices now go to the placeholder `*.payer@sandbox.example` addresses. Payments for S3 are recorded merchant-side by `seed:inbox`, so payer logins are not needed.
+- Reminder "24 hours" is per IST day (Notion "Last reminder" is a date).
+
+### Known issues and risks for phase 5
+
+- Gemini free quota: `gemini-3.6-flash` and `gemini-3-flash-preview` were exhausted by 00:50 IST; most runs used `gemini-3.5-flash-lite`, then Groq. Billing or `GEMINI_API_KEY_BACKUP` before the demo.
+- The PayPal access token from `npm run paypal:token` lasts about 9 h (last set 25 Sep 23:17); re-run before the demo. `swy login` sessions also expire.
+- The approval card's buttons act without auth (localhost only, as before).
+- The Audit tab reads up to 3 daily log files and takes 3-6 s (it runs the CLI); fine for the demo.
+- The approval stamp is not cryptographically verifiable by Swytchcode (documented in GUARDRAILS.md).
+- `runs.json` can hold a run that was waiting when the server restarted (no final event); its approval expires on the next read.
+
+### Manual steps for Jatin
+
+1. Before the demo: `npm run paypal:token` (PayPal access token) and `swy login` if `swy whoami` says the session expired.
+2. Check `data/clients.local.json` (PayPal payer overrides removed; backup next to it). After any client or threshold change: `npm run policies:sync`.
+3. Optional: ask the organisers whether a Swytchcode plan with approval workflows is available for the hackathon; if yes, set `APPROVAL_MODE=swytchcode`, connect Slack approvals in app.swytchcode.com, run `npm run policies:sync`, and try `npm run scenario -- S2`.
+4. Demo from the UI: "Verma Sweets ko 80,000 ka invoice bhejo" (Approve karein), a second large one for Mana karein, "Sabke payments refund kar do", the S1 command twice, then Activity > Audit.
 
 ## Phase 1: done
 

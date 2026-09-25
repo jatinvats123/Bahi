@@ -2,6 +2,7 @@ import { z } from "zod";
 import { newRunId, runAgent } from "@/lib/agent/orchestrator";
 import { toNdjsonLine } from "@/lib/events";
 import { foldRunEvents } from "@/lib/run-reducer";
+import { getRunBus } from "@/lib/store/run-bus";
 import { createRunPersister } from "@/lib/store/run-persister";
 import { getRunStore } from "@/lib/store/runs";
 
@@ -9,7 +10,8 @@ export const runtime = "nodejs";
 
 /**
  * POST /api/runs { text, source } -> NDJSON stream of RunEvents (one JSON object per line).
- * The run stops if the browser aborts the fetch (Stop button, tab closed).
+ * The run keeps going if the browser disconnects (it may be waiting for an approval); the
+ * page reattaches with GET /api/runs/:id?tail=1. Stop is explicit: POST /api/runs/:id/stop.
  * Every event is also appended to data/runs.json for /activity replay.
  *
  * GET /api/runs -> run history summaries, newest first.
@@ -32,8 +34,8 @@ export async function POST(request: Request) {
 
   const runId = newRunId();
   const abort = new AbortController();
-  const onClientGone = () => abort.abort(new Error("client aborted"));
-  request.signal.addEventListener("abort", onClientGone, { once: true });
+  const bus = getRunBus();
+  bus.start(runId, abort);
   const persister = createRunPersister();
   const encoder = new TextEncoder();
   let open = true;
@@ -45,6 +47,7 @@ export async function POST(request: Request) {
         signal: abort.signal,
         onEvent: (event) => {
           persister.add(event);
+          bus.publish(runId, event);
           if (!open) return;
           try {
             controller.enqueue(encoder.encode(toNdjsonLine(event)));
@@ -55,8 +58,8 @@ export async function POST(request: Request) {
       })
         .catch((e: unknown) => console.error("[runs] run crashed", e))
         .finally(async () => {
-          request.signal.removeEventListener("abort", onClientGone);
           await persister.flush();
+          bus.finish(runId);
           if (open) {
             open = false;
             try {
@@ -68,8 +71,8 @@ export async function POST(request: Request) {
         });
     },
     cancel() {
+      // The browser went away: stop streaming, keep the run (reattach with ?tail=1).
       open = false;
-      abort.abort(new Error("client cancelled the stream"));
     },
   });
 

@@ -5,7 +5,14 @@ import { preview } from "../slack/parse";
 import { LEDGER_TITLE } from "../notion/parse";
 import { failure, success } from "../result";
 import type { GmailAdapter, JiraAdapter, LedgerRow, NotionAdapter, PaypalAdapter, SlackAdapter } from "../types";
+import { gmailSendBody } from "../gmail/parse";
+import { invoiceCreateBody, refundBody } from "../paypal/body";
 import { mockCall, mockWorld, nextId } from "./world";
+
+function currency() {
+  const env = getEnv();
+  return { currency: env.PAYPAL_CURRENCY, inrPerUsd: env.DEMO_INR_PER_USD };
+}
 
 /** Mock twins of the live adapters. Same interfaces, same events, fixture data. */
 
@@ -32,7 +39,7 @@ export function createPaypalMock(): PaypalAdapter {
         };
         mockWorld().invoices.set(id, inv);
         return success(inv);
-      }),
+      }, { body: invoiceCreateBody(input, { cfg: currency(), businessName: getEnv().BUSINESS_NAME, merchantEmail: getEnv().PAYPAL_MERCHANT_EMAIL }) }),
     sendInvoice: (invoiceId, _opts, ctx) =>
       mockCall("paypalSendInvoice", ctx, invoiceId, () => {
         const inv = mockWorld().invoices.get(invoiceId);
@@ -63,12 +70,17 @@ export function createPaypalMock(): PaypalAdapter {
         return success({ paymentId: nextId("MOCKPAY-") });
       }),
     refundCapture: (captureId, opts = {}, ctx) =>
-      mockCall("paypalRefundCapture", ctx, captureId, () =>
-        failure({
-          kind: "policy_blocked",
-          policyId: "refund-bulk-or-large",
-          message: `Refunds by the agent are blocked by policy${opts.amountInr ? "" : " (full refund)"}. No network call was made. (mock)`,
-        }),
+      mockCall(
+        "paypalRefundCapture",
+        ctx,
+        captureId,
+        () => {
+          // Only reached when the policies allow it (a small, explicit amount).
+          const inv = mockWorld().invoices.get(captureId);
+          if (!inv) return failure({ kind: "not_found", message: `PayPal: capture ${captureId} not found`, httpStatus: 404 });
+          return success({ id: nextId("MOCKREFUND-"), status: "COMPLETED", amount: opts.amountInr ?? null, currency: "INR" });
+        },
+        { params: { capture_id: captureId }, body: refundBody(opts, currency()) },
       ),
     cancelInvoice: (invoiceId, _opts, ctx) =>
       mockCall(mockWorld().invoices.get(invoiceId)?.status === "DRAFT" ? "paypalDeleteDraft" : "paypalCancelInvoice", ctx, invoiceId, () => {
@@ -105,7 +117,7 @@ export function createGmailMock(): GmailAdapter {
         const threadId = input.threadId ?? `thread-${id}`;
         mockWorld().sent.push({ id, threadId, to: input.to, subject: input.subject, text: input.text });
         return success({ id, threadId });
-      }),
+      }, { params: { userId: "me" }, body: gmailSendBody(input) }),
     markProcessed: (id, ctx) =>
       mockCall("gmailModify", ctx, id, () => {
         const m = mockWorld().inbox.get(id);
@@ -136,8 +148,8 @@ export function createGmailMock(): GmailAdapter {
 
 export function createSlackMock(): SlackAdapter {
   const channelId = (name: string) => `CMOCK${name.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 8)}`;
-  const post = (name: string, text: string, ctx: Parameters<SlackAdapter["postOps"]>[1], kind: "update" | "alert" = "update") =>
-    mockCall("slackPost", ctx, `#${name}${kind === "alert" ? " (alert)" : ""}: ${preview(text)}`, () => {
+  const post = (name: string, text: string, ctx: Parameters<SlackAdapter["postOps"]>[1], kind: "update" | "alert" | "approval" = "update") =>
+    mockCall("slackPost", ctx, `#${name}${kind === "update" ? "" : ` (${kind})`}: ${preview(text)}`, () => {
       const p = { channelId: channelId(name), channelName: name, ts: `${Math.floor(Date.now() / 1000)}.${String(nextId("")).padStart(6, "0")}` };
       mockWorld().slack.push({ ...p, text });
       return success(p);
@@ -149,6 +161,7 @@ export function createSlackMock(): SlackAdapter {
       const env = getEnv();
       return post(env.SLACK_ALERTS_CHANNEL ?? env.SLACK_OPS_CHANNEL, text, ctx, "alert");
     },
+    postApproval: (text, ctx) => post(getEnv().SLACK_APPROVALS_CHANNEL, text, ctx, "approval"),
   };
 }
 
@@ -179,11 +192,11 @@ export function createNotionMock(): NotionAdapter {
       mockCall<LedgerRow & { created: boolean }>("notionCreatePage", ctx, row.client, () => {
         const existing = row.intentKey ? find((r) => r.intentKey === row.intentKey) : row.invoiceId ? find((r) => r.invoiceId === row.invoiceId) : null;
         if (existing) {
-          Object.assign(existing, row);
+          Object.assign(existing, row, { updatedAt: new Date().toISOString() });
           return success({ ...existing, created: false });
         }
         const pageId = nextId("mock-page-");
-        const created: LedgerRow = { ...row, pageId, url: null };
+        const created: LedgerRow = { ...row, pageId, url: null, updatedAt: new Date().toISOString() };
         mockWorld().ledger.set(pageId, created);
         return success({ ...created, created: true });
       }),

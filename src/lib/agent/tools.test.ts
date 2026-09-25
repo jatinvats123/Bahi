@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import clientsJson from "@fixtures/clients.json";
-import type { RunEventDraft } from "../events";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import type { RunEvent, RunEventDraft } from "../events";
+import { createApprovalStore } from "../guardrails/approvals";
+import { foldRunEvents } from "../run-reducer";
 import { createIntegrations } from "../integrations";
 import { mockWorld, resetMockWorld } from "../integrations/mock/world";
 import { ClientSchema } from "../ledger";
@@ -90,7 +95,7 @@ describe("create_and_send_invoice", () => {
     const { exec, events } = setup("Sharma Traders ko website redesign ke liye 15,000 ka invoice bhejo");
     const r = await exec("create_and_send_invoice", { clientId: "cl_sharma", amountInr: 15000, amountPhrase: "15,000", description: "website redesign" });
     expect(r).toMatchObject({ ok: true, status: "sent", amountInr: 15000, due: "2026-10-02" });
-    expect(toolCallsIn(events)).toEqual(["invoices.invoicing.invoices.create", "invoices.invoicing.send.create", "notion.page.create"]);
+    expect(toolCallsIn(events)).toEqual(["notion.query.create", "invoices.invoicing.invoices.create", "invoices.invoicing.send.create", "notion.page.create"]);
     const row = [...mockWorld().ledger.values()].find((x) => x.invoiceId === r.invoiceId);
     expect(row).toMatchObject({ status: "Sent", amountInr: 15000, intentKey: invoiceIntentKey("cl_sharma", 15000, "website redesign", "2026-09-25") });
   });
@@ -163,12 +168,26 @@ describe("refund_payment", () => {
   it("goes to Swytchcode when the owner asks, and a policy block stops the rest of the batch", async () => {
     const { exec, events, ctx } = setup("Sabke payments refund kar do");
     const first = await exec("refund_payment", { invoiceId: "INV-2026-0131", reason: "owner asked" });
-    expect(first).toMatchObject({ ok: false, error: "policy_blocked", policyId: "refund-bulk-or-large" });
+    expect(first).toMatchObject({ ok: false, error: "policy_blocked", policyId: "block-large-refunds", alertPosted: true });
     expect(events.some((e) => e.type === "policy" && e.decision === "blocked")).toBe(true);
     const second = await exec("refund_payment", { invoiceId: "INV-2026-0135", reason: "owner asked" });
     expect(second).toMatchObject({ ok: false, error: "batch_stopped" });
-    expect(toolCallsIn(events)).toEqual(["payments.payment.captures.refund"]);
-    expect(ctx.state.blocked?.policyId).toBe("refund-bulk-or-large");
+    // One Swytchcode refund attempt, then exactly one Slack alert posted by Bahi.
+    expect(toolCallsIn(events)).toEqual(["payments.payment.captures.refund", "slack.chat.postmessage.create"]);
+    expect(mockWorld().slack[0]?.text).toMatch(/block-large-refunds/);
+    expect(ctx.state.blocked?.policyId).toBe("block-large-refunds");
+    expect(await exec("notify_team", { kind: "alert", text: "Refund policy ne rok diya" })).toMatchObject({ skipped: true });
+  });
+
+  it("allows one refund per command even when the model fires several at once", async () => {
+    const { exec, events } = setup("Sabke payments refund kar do");
+    const [a, b, c] = await Promise.all([
+      exec("refund_payment", { invoiceId: "INV-2026-0131", amountInr: 2_000, reason: "owner asked" }),
+      exec("refund_payment", { invoiceId: "INV-2026-0135", amountInr: 2_000, reason: "owner asked" }),
+      exec("refund_payment", { invoiceId: "INV-2026-0118", amountInr: 2_000, reason: "owner asked" }),
+    ]);
+    expect([a, b, c].filter((r) => r.error === "bulk_refund_blocked")).toHaveLength(2);
+    expect(toolCallsIn(events).filter((t) => t === "payments.payment.captures.refund")).toHaveLength(1);
   });
 });
 
@@ -212,5 +231,97 @@ describe("notify_team", () => {
     await exec("notify_team", { kind: "alert", text: "Suspicious email" });
     expect(await exec("notify_team", { kind: "alert", text: "Suspicious email" })).toMatchObject({ skipped: true });
     expect(mockWorld().slack).toHaveLength(2);
+  });
+});
+
+describe("approval desk (S2) and repeated commands", () => {
+  function withDesk(command: string, decide: "approved" | "denied" | "none") {
+    const s = setup(command);
+    const store = createApprovalStore(path.join(mkdtempSync(path.join(tmpdir(), "bahi-desk-")), "approvals.json"));
+    s.ctx.approvals = { store, timeoutMs: decide === "none" ? 150 : 10_000, dashboardUrl: "http://localhost:3000", pollMs: 10, heartbeatMs: 20 };
+    if (decide !== "none") {
+      const timer = setInterval(() => {
+        void store.list().then(async (list) => {
+          const p = list.find((a) => a.status === "pending");
+          if (p) {
+            clearInterval(timer);
+            await store.decide(p.id, decide, "owner (test)");
+          }
+        });
+      }, 15);
+    }
+    return { ...s, store };
+  }
+  const input = { clientId: "cl_verma", amountInr: 80_000, amountPhrase: "80,000", description: "Diwali mithai order" };
+
+  it("approved: AWAITING -> APPROVED on one timeline entry, then the stamped invoice is created and sent", async () => {
+    const { exec, events } = withDesk("Verma Sweets ko 80,000 ka invoice bhejo", "approved");
+    const r = await exec("create_and_send_invoice", input);
+    expect(r).toMatchObject({ ok: true, status: "sent", approvedBy: "owner (test)" });
+    const approvals = events.filter((e) => e.type === "approval");
+    expect(approvals.map((e) => e.type === "approval" && e.status)).toEqual(["pending", "approved"]);
+    expect(approvals[0]).toMatchObject({ client: "Verma Sweets", amountInr: 80_000, policyId: "invoice-approval-over-threshold", via: "bahi" });
+    const view = foldRunEvents(stamp(events));
+    const entry = view.entries.find((e) => e.kind === "tool" && e.tool === "invoices.invoicing.invoices.create");
+    expect(entry?.kind === "tool" && entry.stamp).toBe("approved");
+    expect(entry?.kind === "tool" && entry.state).toBe("ok");
+    expect(view.stamp).toBe("approved");
+    expect(mockWorld().slack.some((m) => m.channelName === "approvals" && /Verma Sweets/.test(m.text))).toBe(true);
+    const row = [...mockWorld().ledger.values()].find((x) => x.invoiceId === r.invoiceId);
+    expect(row?.status).toBe("Sent");
+    expect([...mockWorld().invoices.values()].filter((i) => i.recipientName === "Verma Sweets" && i.amountInr === 80_000)).toHaveLength(1);
+  });
+
+  it("denied: DENIED stamp, no invoice in PayPal, ledger row Cancelled", async () => {
+    const { exec, events } = withDesk("Verma Sweets ko 80,000 ka invoice bhejo", "denied");
+    const r = await exec("create_and_send_invoice", input);
+    expect(r).toMatchObject({ ok: false, error: "approval_denied" });
+    expect([...mockWorld().invoices.values()].some((i) => i.amountInr === 80_000)).toBe(false);
+    expect([...mockWorld().ledger.values()].find((x) => x.amountInr === 80_000)?.status).toBe("Cancelled");
+    const view = foldRunEvents(stamp(events));
+    expect(view.status).toBe("denied");
+    expect(view.stamp).toBe("denied");
+  });
+
+  it("expired: EXPIRED stamp after the approval window, with heartbeats while waiting", async () => {
+    const { exec, events } = withDesk("Verma Sweets ko 80,000 ka invoice bhejo", "none");
+    const r = await exec("create_and_send_invoice", input);
+    expect(r).toMatchObject({ ok: false, error: "approval_expired" });
+    expect(events.some((e) => e.type === "heartbeat")).toBe(true);
+    const view = foldRunEvents(stamp(events));
+    expect(view.status).toBe("expired");
+    expect(view.pendingApprovals).toHaveLength(0);
+  });
+
+  it("a repeated S1 in a new run creates no second invoice and says so with an idempotent tag", async () => {
+    const first = setup("Sharma Traders ko website redesign ke liye 15,000 ka invoice bhejo");
+    const a = await first.exec("create_and_send_invoice", { clientId: "cl_sharma", amountInr: 15000, amountPhrase: "15,000", description: "website redesign" });
+    expect(a.status).toBe("sent");
+    const second = setup("Sharma ji ko 15k ka invoice bhejo website redesign ke liye");
+    const b = await second.exec("create_and_send_invoice", { clientId: "cl_sharma", amountInr: 15000, amountPhrase: "15k", description: "Website Redesign" });
+    expect(b).toMatchObject({ ok: true, status: "already_done", idempotent: true, invoiceId: a.invoiceId });
+    expect(toolCallsIn(second.events)).toEqual(["notion.query.create"]);
+    const tagged = second.events.find((e) => e.type === "tool_result" && e.tags?.includes("idempotent"));
+    expect(tagged?.type === "tool_result" && tagged.summary).toMatch(/already bheja ja chuka hai/);
+    expect([...mockWorld().invoices.values()].filter((i) => i.reference === a.intentKey || i.recipientName === "Sharma Traders" && i.amountInr === 15000)).toHaveLength(1);
+  });
+});
+
+/** Give drafts runId/seq/ts so the reducer can fold them. */
+function stamp(drafts: RunEventDraft[]): RunEvent[] {
+  return drafts.map((d, i) => ({ ...d, runId: "run_t", seq: i + 1, ts: new Date(Date.UTC(2026, 8, 26, 6, 0, i)).toISOString() }) as RunEvent);
+}
+
+describe("draft reuse", () => {
+  it("a draft left by a failed send is sent again, not created twice", async () => {
+    const { exec, events } = setup("Sharma Traders ko website redesign ke liye 15,000 ka invoice bhejo");
+    const key = invoiceIntentKey("cl_sharma", 15000, "website redesign", "2026-09-25");
+    const w = mockWorld();
+    w.invoices.set("INV2-DRAFT-1", { id: "INV2-DRAFT-1", number: "INV2-DRAFT-1", status: "DRAFT", currency: "INR", amount: 15000, amountInr: 15000, recipientEmail: "s@x.in", recipientName: "Sharma Traders", payUrl: null, dueDate: "2026-10-02", reference: key, paidAmount: null });
+    w.ledger.set("mock-page-draft", { pageId: "mock-page-draft", client: "Sharma Traders", clientEmail: "s@x.in", amountInr: 15000, description: "website redesign", invoiceId: "INV2-DRAFT-1", invoiceUrl: null, status: "Draft", issued: "2026-09-25", due: "2026-10-02", lastReminder: null, paidOn: null, jiraKey: null, intentKey: key, url: null });
+    const r = await exec("create_and_send_invoice", { clientId: "cl_sharma", amountInr: 15000, amountPhrase: "15,000", description: "website redesign" });
+    expect(r).toMatchObject({ ok: true, status: "sent", invoiceId: "INV2-DRAFT-1" });
+    expect(toolCallsIn(events)).not.toContain("invoices.invoicing.invoices.create");
+    expect(w.ledger.get("mock-page-draft")?.status).toBe("Sent");
   });
 });

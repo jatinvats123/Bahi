@@ -165,3 +165,43 @@ describe("kernel output and owner messages", () => {
     expect(ownerMessage({ kind: "policy_blocked", message: "x" }, "PayPal")).toBe("Rok diya gaya: policy.");
   });
 });
+
+describe("phase 4: approvals on a plan without them", () => {
+  it("REQUIRES_APPROVAL refused by the plan is a block with a plain reason, not a hold (observed 26 Sep 2026)", () => {
+    const stderr = [
+      "2026/09/26 00:11:02 [swytchcode exec] request tool=stripe.create_payment {}",
+      "approval test",
+      "This command needs approval, but the request could not be created: approval requests are not included in your current plan - upgrade at https://app.swytchcode.com/dashboard/payments/plans. The command was not run.",
+      "2026/09/26 00:11:02 [swytchcode exec] failed tool=stripe.create_payment exit_code=6 error=approval request refused: approval requests are not included in your current plan",
+    ].join("\n");
+    const e = classifyCliFailure({ exitCode: 6, stdout: "", stderr });
+    expect(e.kind).toBe("policy_blocked");
+    expect(e.category).toBe("approval_unavailable");
+    expect(e.message).toMatch(/APPROVAL_MODE=gate/);
+  });
+
+  it("a real HITL hold says Swytchcode holds it", () => {
+    const e = classifyCliFailure({ exitCode: 7, stdout: "", stderr: 'Approval requested for invoices.invoicing.invoices.create (policy "invoice-approval-over-threshold"). Request abc123.' });
+    expect(e).toMatchObject({ kind: "approval_required", approvalVia: "swytchcode", approvalRequestId: "abc123" });
+  });
+});
+
+describe("swy exec --explain output", () => {
+  it("parses the explain block (printed on stderr in 2.23.5)", async () => {
+    const { parseExplainOutput } = await import("./runtime");
+    const text = [
+      "2026/09/26 00:23:36 [swytchcode exec] request tool=invoices.invoicing.send.create {}",
+      "Tool:        invoices.invoicing.send.create",
+      "Provider: PayPal.invoicing_v2@2.0",
+      "Mode:        production",
+      "Endpoint:    POST https://api-m.sandbox.paypal.com/v2/invoicing/invoices/{invoice_id}/send",
+      "no real API call was made.",
+    ].join("\n");
+    expect(parseExplainOutput(text)).toEqual({
+      tool: "invoices.invoicing.send.create",
+      provider: "PayPal.invoicing_v2@2.0",
+      mode: "production",
+      endpoint: "POST https://api-m.sandbox.paypal.com/v2/invoicing/invoices/{invoice_id}/send",
+    });
+  });
+});

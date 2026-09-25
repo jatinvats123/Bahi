@@ -57,3 +57,4 @@ __pycache__/
 
 # scratch
 .tmp/
+.swytchcode/integrations/policies.json

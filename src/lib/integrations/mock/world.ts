@@ -6,7 +6,9 @@ import { ownerMessage } from "../../swytch/errors";
 import { TOOLS, type ToolKey } from "../../swytch/tools";
 import { INTEGRATION_LABEL } from "../../verbs";
 import type { InvoiceStatus } from "../../ledger";
+import type { CallInput } from "../../guardrails/policies";
 import { failure, type Outcome } from "../result";
+import { mockPoliciesFor, mockPolicyCheck } from "./policy";
 import { NOTION_STATUS_FROM_APP, type CallCtx, type EmailMessage, type JiraIssue, type LedgerRow, type PaypalInvoice, type SlackPost } from "../types";
 
 /**
@@ -139,23 +141,41 @@ function fakeMs(id: string): number {
  * Run a mock operation as if it were a Swytchcode call: emits tool_call and
  * tool_result (plus policy events for blocks) exactly like the live runtime.
  */
-export async function mockCall<T>(key: ToolKey, ctx: CallCtx | undefined, summary: string, fn: () => Outcome<T>): Promise<Outcome<T>> {
+/**
+ * One mock call, emitting the same events as a live Swytchcode call. When `policyInput` is
+ * given (the exact request body the live adapter would send), the generated guard policies are
+ * checked first, like the kernel's pre-execution check: a blocked call never runs `fn`.
+ */
+export async function mockCall<T>(key: ToolKey, ctx: CallCtx | undefined, summary: string, fn: () => Outcome<T>, policyInput?: CallInput): Promise<Outcome<T>> {
   const def = TOOLS[key];
   const callId = ctx?.callId ?? `m_${Math.random().toString(36).slice(2, 10)}`;
   const emit = ctx?.onEvent;
   const ms = fakeMs(def.id);
   emit?.({ type: "tool_call", callId, integration: def.integration, tool: def.id, inputSummary: summary });
+  const blocked = policyInput ? mockPolicyCheck(def.id, policyInput) : null;
   let out: Outcome<T>;
-  try {
-    out = fn();
-  } catch (e) {
-    out = failure({ kind: "unknown", message: e instanceof Error ? e.message : String(e) }, ms);
+  if (blocked) {
+    out = failure(blocked, 0);
+  } else {
+    try {
+      out = fn();
+    } catch (e) {
+      out = failure({ kind: "unknown", message: e instanceof Error ? e.message : String(e) }, ms);
+    }
   }
-  out = { ...out, ms };
+  out = { ...out, ms: blocked ? 0 : ms };
   if (!out.ok) {
     const err: ExecError = out.error;
     if (err.kind === "policy_blocked") emit?.({ type: "policy", callId, decision: "blocked", policyId: err.policyId ?? "unknown", message: err.message });
+    if (err.kind === "approval_required") {
+      // Like the live runtime: the approval desk emits the approval events and the eventual result.
+      emit?.({ type: "policy", callId, decision: "approval_required", policyId: err.policyId ?? "unknown", message: err.message });
+      return out;
+    }
+  } else if (policyInput) {
+    const ids = mockPoliciesFor(def.id);
+    if (ids.length) emit?.({ type: "policy", callId, decision: "allowed", policyId: ids.join(","), message: "Swytchcode: policy ok (mock)" });
   }
-  emit?.({ type: "tool_result", callId, ok: out.ok, summary: out.ok ? def.done : ownerMessage(out.error, INTEGRATION_LABEL[def.integration]), ms, retries: 0 });
+  emit?.({ type: "tool_result", callId, ok: out.ok, summary: out.ok ? def.done : ownerMessage(out.error, INTEGRATION_LABEL[def.integration]), ms: out.ms, retries: 0 });
   return out;
 }

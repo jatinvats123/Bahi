@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { alignedToLine } from "../../guardrails/policies";
 import type { EmailMessage, EmailSummary, InsertEmailInput, SendEmailInput } from "../types";
 
 /** Gmail JSON <-> domain. Pure; tested against fixtures/recorded/gmail. */
@@ -128,7 +129,8 @@ function stripNewlines(v: string): string {
 export function buildRfc822(input: SendEmailInput | InsertEmailInput): string {
   const lines = [
     ...("from" in input ? [`From: ${stripNewlines(input.from)}`] : []),
-    `To: ${stripNewlines(input.to)}`,
+    // Outgoing mail starts with a 3-byte-aligned To line so the email-known-clients-only policy can match it (see alignedToLine).
+    "from" in input ? `To: ${stripNewlines(input.to)}` : alignedToLine(stripNewlines(input.to)).slice(0, -2),
     `Subject: ${encodeHeader(stripNewlines(input.subject))}`,
     ...("date" in input && input.date ? [`Date: ${new Date(input.date).toUTCString()}`] : []),
     ...("inReplyTo" in input && input.inReplyTo ? [`In-Reply-To: ${stripNewlines(input.inReplyTo)}`, `References: ${stripNewlines(input.inReplyTo)}`] : []),
@@ -139,6 +141,11 @@ export function buildRfc822(input: SendEmailInput | InsertEmailInput): string {
     input.text.replace(/\r?\n/g, "\r\n"),
   ];
   return lines.join("\r\n");
+}
+
+/** Body for gmail.user.send.create1 (messages/send). */
+export function gmailSendBody(input: SendEmailInput): { raw: string; threadId?: string } {
+  return { raw: encodeBase64Url(buildRfc822(input)), ...(input.threadId ? { threadId: input.threadId } : {}) };
 }
 
 export const GmailSentRawSchema = z.object({ id: z.string(), threadId: z.string() }).loose();

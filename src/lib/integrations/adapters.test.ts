@@ -74,16 +74,37 @@ describe("mock world", () => {
     await m.paypal.recordPayment(created.value.id, { amountInr: 15000 });
     const got = await m.paypal.getInvoice(created.value.id);
     expect(got.ok && got.value.status).toBe("MARKED_AS_PAID");
-    expect(events.map((e) => e.type)).toEqual(["tool_call", "tool_result"]);
+    expect(events.map((e) => e.type)).toEqual(["tool_call", "policy", "tool_result"]);
     expect(events[0]).toMatchObject({ integration: "paypal", tool: "invoices.invoicing.invoices.create" });
+    expect(events[1]).toMatchObject({ decision: "allowed", policyId: "invoice-approval-over-threshold" });
   });
 
-  it("refunds are blocked by policy and say so in the events", async () => {
+  it("full and large refunds are blocked by the same policy as Swytchcode, before anything runs", async () => {
     const r = await m.paypal.refundCapture("CAP-1", {}, ctx());
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.kind).toBe("policy_blocked");
     expect(events.map((e) => e.type)).toEqual(["tool_call", "policy", "tool_result"]);
-    expect(events[1]).toMatchObject({ decision: "blocked", policyId: "refund-bulk-or-large" });
+    expect(events[1]).toMatchObject({ decision: "blocked", policyId: "block-large-refunds" });
+    const large = await m.paypal.refundCapture("INV-2026-0131", { amountInr: 15_000 });
+    expect(!large.ok && large.error.policyId).toBe("block-large-refunds");
+    const small = await m.paypal.refundCapture("INV-2026-0131", { amountInr: 2_000 });
+    expect(small.ok).toBe(true);
+  });
+
+  it("large invoices are held for approval unless they carry the owner's approval stamp", async () => {
+    const input = { clientName: "Verma Sweets", recipientEmail: "v@x.in", description: "Diwali order", amountInr: 80_000, intentKey: "k2" };
+    const held = await m.paypal.createInvoice(input, ctx());
+    expect(!held.ok && held.error).toMatchObject({ kind: "approval_required", approvalVia: "bahi", policyId: "invoice-approval-over-threshold" });
+    expect(events.map((e) => e.type)).toEqual(["tool_call", "policy"]);
+    expect(events[1]).toMatchObject({ decision: "approval_required" });
+    const stamped = await m.paypal.createInvoice({ ...input, approvalMemo: "Bahi approval apr_0123456789ab by owner" });
+    expect(stamped.ok).toBe(true);
+  });
+
+  it("emails only known clients", async () => {
+    expect((await m.gmail.sendEmail({ to: "orders@vermasweets.example", subject: "Hi", text: "x" })).ok).toBe(true);
+    const out = await m.gmail.sendEmail({ to: "attacker@evil.example", subject: "Hi", text: "x" }, ctx());
+    expect(!out.ok && out.error.policyId).toBe("email-known-clients-only");
   });
 
   it("gmail: unread list shrinks after markProcessed", async () => {

@@ -1,12 +1,18 @@
 import "server-only";
-import { createHash } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { tool } from "ai";
 import { z } from "zod";
 import { computeBrief, ledgerInvoices, verifyWithPaypal } from "../brief";
 import type { RunEventDraft } from "../events";
-import { formatINR, istDateKey } from "../format";
+import { formatINR, formatTimeIST, istDateKey } from "../format";
+import type { ApprovalRecord, ApprovalStore } from "../guardrails/approvals";
+import { holdForApproval } from "../guardrails/desk";
+import { invoiceIntentKey as intentKeyFor } from "../guardrails/intent-key";
+import { approvalStamp, POLICY_IDS } from "../guardrails/policies";
 import type { ExecError } from "../swytch/errors";
-import { isPaypalPaid, type CallCtx, type EmailMessage, type Integrations, type LedgerRow, type LedgerRowInput, type PaypalInvoice } from "../integrations/types";
+import type { Outcome } from "../integrations/result";
+import { isPaypalPaid, type CallCtx, type CreateInvoiceInput, type EmailMessage, type Integrations, type LedgerRow, type LedgerRowInput, type PaypalInvoice } from "../integrations/types";
+import { TOOLS } from "../swytch/tools";
 import type { Client } from "../ledger";
 import { amountMismatch } from "./amount";
 import { resolveClient } from "./resolve-client";
@@ -33,12 +39,29 @@ export interface AgentConfig {
   approvalsChannel: string;
 }
 
+/** What the approval desk needs (live and mock). Without it, a held invoice is reported and not waited on. */
+export interface ApprovalDeps {
+  store: ApprovalStore;
+  timeoutMs: number;
+  dashboardUrl: string;
+  /** What runs if approved, from swy exec --explain (live only). */
+  explainInvoice?: (input: CreateInvoiceInput) => Promise<string | null>;
+  swytchcodeStatus?: (requestId: string) => Promise<"hitl" | "approved" | "rejected" | "expired" | "failed" | null>;
+  heartbeatMs?: number;
+  pollMs?: number;
+}
+
 export interface AgentRunState {
   ledger: LedgerRow[] | null;
   paypal: Map<string, PaypalInvoice>;
   invoices: Map<string, unknown>;
   /** Set when a money call was blocked by policy: related money actions stop. */
   blocked: { policyId: string; message: string } | null;
+  /** Bahi posted the one Slack alert about a policy block itself. */
+  blockAlerted: boolean;
+  refundsAttempted: number;
+  /** The owner said no (or did not answer) to an approval in this run. */
+  approvalStopped: { status: "denied" | "expired"; client: string } | null;
   moneyActions: string[];
   slackUpdates: number;
   alerts: Set<string>;
@@ -58,10 +81,12 @@ export interface AgentToolContext {
   now: () => Date;
   signal?: AbortSignal;
   state: AgentRunState;
+  runId?: string | null;
+  approvals?: ApprovalDeps;
 }
 
 export function createRunState(): AgentRunState {
-  return { ledger: null, paypal: new Map(), invoices: new Map(), blocked: null, moneyActions: [], slackUpdates: 0, alerts: new Set(), flaggedEmails: new Set(), facts: [], final: null };
+  return { ledger: null, paypal: new Map(), invoices: new Map(), blocked: null, blockAlerted: false, refundsAttempted: 0, approvalStopped: null, moneyActions: [], slackUpdates: 0, alerts: new Set(), flaggedEmails: new Set(), facts: [], final: null };
 }
 
 // ------------------------------------------------------------------ helpers
@@ -115,11 +140,13 @@ function rowInput(r: LedgerRow): LedgerRowInput {
   };
 }
 
-/** App-level intent key: the same invoice asked twice on the same day is the same intent. */
+/** App-level intent key (see guardrails/intent-key.ts). Kept here for existing callers. */
 export function invoiceIntentKey(clientId: string, amountInr: number, description: string, today: string): string {
-  const h = createHash("sha256").update(`${clientId}|${amountInr}|${description.trim().toLowerCase()}|${today}`).digest("hex");
-  return `bahi-${h.slice(0, 16)}`;
+  return intentKeyFor({ clientId, amountInr, description, date: today });
 }
+
+/** Ledger statuses that mean "this intent was already handled". */
+const DONE_STATUSES = new Set(["Awaiting approval", "Sent", "Paid"]);
 
 function guarded<I, O>(ctx: AgentToolContext, fn: (input: I) => Promise<O>): (input: I) => Promise<O | Fail> {
   return async (input: I) => {
@@ -157,6 +184,121 @@ export function createAgentTools(ctx: AgentToolContext) {
     if (!r.ok) return fromExec(r.error, "Check the invoice id; it must come from the ledger or the email.");
     state.paypal.set(invoiceId, r.value);
     return { ok: true, invoice: r.value };
+  }
+
+  /**
+   * Repeated-command guard: a Notion row with this intent key that is Awaiting approval, Sent
+   * or Paid means the invoice was already handled. The Notion lookup's timeline line says so,
+   * with an "idempotent" tag.
+   */
+  async function findDoneIntent(intentKey: string): Promise<{ done: LedgerRow | null; draft: LedgerRow | null }> {
+    const held: RunEventDraft[] = [];
+    const r = await io.notion.findByIntentKey(intentKey, { onEvent: (e) => (e.type === "tool_result" ? held.push(e) : emit(e)) });
+    const row = r.ok && r.value?.status && DONE_STATUSES.has(r.value.status) ? r.value : null;
+    // A draft left by an earlier failed send is reused (sent again), never duplicated.
+    const draft = r.ok && r.value?.status === "Draft" && r.value.invoiceId ? r.value : null;
+    for (const e of held) {
+      if (e.type === "tool_result" && row) {
+        const when = row.updatedAt ? ` ${formatTimeIST(row.updatedAt)} pe` : "";
+        const what = row.status === "Awaiting approval" ? "approval ke liye ruka hua hai" : row.status === "Paid" ? "bheja ja chuka hai aur paid hai" : "bheja ja chuka hai";
+        emit({ ...e, summary: `Ye invoice aaj${when} already ${what}${row.invoiceId ? ` (${row.invoiceId})` : ""}.`, tags: ["idempotent"] });
+      } else if (e.type === "tool_result" && draft) {
+        emit({ ...e, summary: `Pichli koshish ka draft mila (${draft.invoiceId}); naya invoice nahi banega, wahi bhejenge.`, tags: ["idempotent"] });
+      } else {
+        emit(e);
+      }
+    }
+    return { done: row, draft };
+  }
+
+  /** One Slack alert per run about a policy block, posted by Bahi itself (the model need not). */
+  async function onPolicyBlock(e: ExecError, what: string, stopBatch = true): Promise<void> {
+    if (stopBatch) state.blocked ??= { policyId: e.policyId ?? "unknown", message: e.message };
+    if (state.blockAlerted) return;
+    state.blockAlerted = true;
+    const text = `Rok diya gaya (Swytchcode policy \`${e.policyId ?? "unknown"}\`): ${what}. ${e.message} Network call se pehle roka gaya; provider tak kuch nahi gaya.`;
+    const r = await io.slack.postAlert(text, call);
+    if (r.ok) state.alerts.add(text.trim().toLowerCase());
+  }
+
+  type HoldOutcome = { ok: true; created: Outcome<PaypalInvoice>; by: string } | { ok: false; result: Record<string, unknown> };
+
+  /**
+   * A large invoice was held by the Swytchcode gate policy (or Swytchcode HITL). Record the hold
+   * in the ledger, run the approval desk, and on approval re-issue the create with the owner's
+   * approval stamp (the policy lets stamped invoices through). Same callId, so the timeline
+   * shows one entry going AWAITING -> APPROVED -> done.
+   */
+  async function holdInvoice(h: { callId: string; client: Client; amountInr: number; description: string; due: string; intentKey: string; error: ExecError; createInput: CreateInvoiceInput }): Promise<HoldOutcome> {
+    const policyId = h.error.policyId ?? POLICY_IDS.invoiceApproval;
+    const via = h.error.approvalVia ?? "bahi";
+    const rowBase: Omit<LedgerRowInput, "status"> = { client: h.client.name, clientEmail: h.client.email, amountInr: h.amountInr, description: h.description, invoiceId: null, invoiceUrl: null, issued: today(), due: h.due, lastReminder: null, paidOn: null, jiraKey: null, intentKey: h.intentKey };
+    await io.notion.upsertLedgerRow({ ...rowBase, status: "Awaiting approval" }, call);
+    state.ledger = null;
+
+    const deps = ctx.approvals;
+    if (!deps) {
+      emit({ type: "approval", callId: h.callId, status: "pending", channel: `#${ctx.config.approvalsChannel}`, via, policyId, client: h.client.name, amountInr: h.amountInr, description: h.description });
+      return { ok: false, result: { ok: true, status: "awaiting_approval", client: h.client.name, amountInr: h.amountInr, message: `Held for approval (${policyId}).` } };
+    }
+
+    emit({ type: "thinking", text: `${formatINR(h.amountInr)} approval ki seema (${formatINR(ctx.config.approvalThresholdInr)}) se upar hai. Swytchcode ne PayPal call rok di; owner ki approval ka intezaar.` });
+    const explainInvoice = deps.explainInvoice;
+    const record: ApprovalRecord | null = await holdForApproval(
+      { callId: h.callId, runId: ctx.runId ?? null, policyId, tool: TOOLS.paypalCreateInvoice.id, client: h.client.name, amountInr: h.amountInr, description: h.description, via, swytchcodeRequestId: h.error.approvalRequestId ?? null },
+      {
+        emit,
+        slack: io.slack,
+        store: deps.store,
+        timeoutMs: deps.timeoutMs,
+        channel: ctx.config.approvalsChannel,
+        dashboardUrl: deps.dashboardUrl,
+        signal: ctx.signal,
+        explain: explainInvoice ? () => explainInvoice({ ...h.createInput, approvalMemo: approvalStamp("apr_explain00", "owner") }) : undefined,
+        swytchcodeStatus: deps.swytchcodeStatus,
+        heartbeatMs: deps.heartbeatMs,
+        pollMs: deps.pollMs,
+      },
+      ctx.config.businessName,
+    );
+
+    if (record?.status === "approved") {
+      const by = record.by ?? "owner";
+      if (via === "swytchcode") {
+        // Swytchcode runs the approved command itself; find the invoice it created by our intent key.
+        const found = await findInvoiceByReference(h.intentKey);
+        if (found) emit({ type: "tool_result", callId: h.callId, ok: true, summary: `Approve hua; Swytchcode ne invoice banaya (${found.id}).`, ms: 0, retries: 0 });
+        return { ok: true, created: found ? { ok: true, value: found, ms: 0 } : { ok: false, error: { kind: "not_found", message: "Approved, but the invoice Swytchcode created was not found in PayPal yet." }, ms: 0 }, by };
+      }
+      const created = await io.paypal.createInvoice({ ...h.createInput, approvalMemo: approvalStamp(record.id, by) }, { onEvent: emit, callId: h.callId });
+      return { ok: true, created, by };
+    }
+
+    const status = record?.status === "denied" ? "denied" : "expired";
+    state.approvalStopped = { status, client: h.client.name };
+    emit({ type: "tool_result", callId: h.callId, ok: false, summary: status === "denied" ? "Approval nahi mila: invoice nahi bana." : "Approval ka samay khatam: invoice nahi bana.", ms: 0, retries: 0 });
+    await io.notion.upsertLedgerRow({ ...rowBase, status: "Cancelled" }, call);
+    state.ledger = null;
+    return {
+      ok: false,
+      result: fail(
+        status === "denied" ? "approval_denied" : "approval_expired",
+        status === "denied"
+          ? `The owner denied the ${formatINR(h.amountInr)} invoice for ${h.client.name}${record?.by ? ` (${record.by})` : ""}. Nothing was created in PayPal; the ledger row is Cancelled.`
+          : `No decision within the approval window for the ${formatINR(h.amountInr)} invoice for ${h.client.name}. Nothing was created in PayPal; the ledger row is Cancelled.`,
+        { policyId, hint: "Stop the invoice work, tell the owner plainly, do not retry." },
+      ),
+    };
+  }
+
+  async function findInvoiceByReference(reference: string): Promise<PaypalInvoice | null> {
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const list = await io.paypal.listInvoices({ pageSize: 20 }, call);
+      const hit = list.ok ? list.value.invoices.find((i) => i.reference === reference) : undefined;
+      if (hit) return hit;
+      await new Promise((r) => setTimeout(r, 5_000));
+    }
+    return null;
   }
 
   const invoiceView = (i: PaypalInvoice) => ({
@@ -241,7 +383,7 @@ export function createAgentTools(ctx: AgentToolContext) {
 
     create_and_send_invoice: tool({
       description:
-        "Create a PayPal (sandbox) invoice for a client, send it to the client's PayPal email, and record it in the Notion ledger as Sent. Three Swytchcode calls. Large invoices may be held for human approval in Slack by policy.",
+        "Create a PayPal (sandbox) invoice for a client, send it to the client's PayPal email, and record it in the Notion ledger as Sent. First checks the ledger for the same invoice today (repeated command: returns already_done, creates nothing). Invoices above the approval limit are held by a Swytchcode policy; this tool waits for the owner's decision and then continues (sent, approvedBy) or stops (approval_denied / approval_expired).",
       inputSchema: z.object({
         clientId: z.string().describe("clientId from find_client (or from list_inbox knownClient)"),
         amountInr: z.number().int().positive().describe("Amount in rupees as a plain number, e.g. 15000"),
@@ -262,18 +404,44 @@ export function createAgentTools(ctx: AgentToolContext) {
         const seen = state.invoices.get(intentKey);
         if (seen) return { ...(seen as object), note: "Already done in this run; not sent twice." };
 
+        // Repeated command (another run, same day): the Notion ledger remembers the intent key.
+        const { done: dup, draft } = await findDoneIntent(intentKey);
+        if (dup) {
+          const out = {
+            ok: true,
+            status: "already_done",
+            idempotent: true,
+            ledgerStatus: dup.status,
+            invoiceId: dup.invoiceId,
+            client: client.name,
+            amountInr: input.amountInr,
+            message: `Same invoice (${client.name}, ${formatINR(input.amountInr)}, ${description}) is already ${dup.status} today. Nothing was created again.`,
+            hint: "Tell the owner it was already done; do not create it again.",
+          };
+          state.invoices.set(intentKey, out);
+          return out;
+        }
+
         const due = addDays(t, input.dueInDays);
-        const created = await io.paypal.createInvoice(
-          { clientName: client.name, recipientEmail: client.paypalEmail ?? client.email, description, amountInr: input.amountInr, dueDate: due, intentKey },
-          call,
-        );
+        const createInput = { clientName: client.name, recipientEmail: client.paypalEmail ?? client.email, description, amountInr: input.amountInr, dueDate: due, intentKey };
+        const createCallId = `c_${randomUUID().slice(0, 8)}`;
+        let approvedBy: string | null = null;
+        let created: Outcome<PaypalInvoice>;
+        const existingDraft = draft?.invoiceId ? await io.paypal.getInvoice(draft.invoiceId, call) : null;
+        if (existingDraft?.ok && existingDraft.value.status === "DRAFT") {
+          created = existingDraft;
+        } else {
+          created = await io.paypal.createInvoice(createInput, { onEvent: emit, callId: createCallId });
+        }
+
+        if (!created.ok && created.error.kind === "approval_required") {
+          const held = await holdInvoice({ callId: createCallId, client, amountInr: input.amountInr, description, due, intentKey, error: created.error, createInput });
+          if (!held.ok) return held.result;
+          created = held.created;
+          approvedBy = held.by;
+        }
         if (!created.ok) {
-          if (created.error.kind === "policy_blocked") state.blocked = { policyId: created.error.policyId ?? "unknown", message: created.error.message };
-          if (created.error.kind === "approval_required") {
-            const out = { ok: true, status: "awaiting_approval", client: client.name, amountInr: input.amountInr, message: `Held for approval in Slack #${ctx.config.approvalsChannel}.` };
-            state.invoices.set(intentKey, out);
-            return out;
-          }
+          if (created.error.kind === "policy_blocked") await onPolicyBlock(created.error, `${client.name} ka ${formatINR(input.amountInr)} ka invoice`);
           return fromExec(created.error);
         }
         const inv = created.value;
@@ -301,6 +469,7 @@ export function createAgentTools(ctx: AgentToolContext) {
           description,
           due,
           payUrl,
+          ...(approvedBy ? { approvedBy } : {}),
           ledger: row.ok ? "Recorded in Notion as Sent" : `PayPal invoice sent, but the Notion ledger write failed: ${row.error.message}`,
         };
         state.invoices.set(intentKey, out);
@@ -410,7 +579,10 @@ export function createAgentTools(ctx: AgentToolContext) {
         const pp = state.paypal.get(input.invoiceId);
         if (pp && isPaypalPaid(pp.status)) return fail("already_paid", `PayPal shows ${input.invoiceId} as paid. No reminder sent.`);
         const t = today();
-        if (row.lastReminder === t) return { ok: true, skipped: true, message: `Already reminded ${client.name} today.` };
+        // At most one reminder per invoice per day (Notion "Last reminder" is a date).
+        if (row.lastReminder && dayDiff(row.lastReminder, t) < 1) {
+          return { ok: true, skipped: true, message: `Already reminded ${client.name} about ${row.invoiceId} today (one reminder per invoice per day).` };
+        }
 
         const lines = [
           input.message.trim(),
@@ -423,7 +595,13 @@ export function createAgentTools(ctx: AgentToolContext) {
           ctx.config.businessName,
         ];
         const sent = await io.gmail.sendEmail({ to: client.email, subject: `Payment reminder: ${row.description || row.invoiceId} (${formatINR(row.amountInr ?? 0)})`, text: lines.join("\n") }, call);
-        if (!sent.ok) return fromExec(sent.error);
+        if (!sent.ok) {
+          if (sent.error.kind === "policy_blocked") {
+            await onPolicyBlock(sent.error, `reminder email to ${client.email}`, false);
+            return { ...fromExec(sent.error), alertPosted: true, hint: "Swytchcode blocked the email before it was sent. Bahi already posted the Slack alert. Tell the owner the client's email needs checking." };
+          }
+          return fromExec(sent.error);
+        }
         const noted = await io.notion.setLastReminder(row.pageId, t, call);
         if (noted.ok && state.ledger) state.ledger = state.ledger.map((r) => (r.pageId === row.pageId ? noted.value : r));
         state.moneyActions.push(`Reminder to ${client.name} for ${row.invoiceId}`);
@@ -447,11 +625,17 @@ export function createAgentTools(ctx: AgentToolContext) {
         if (state.blocked) {
           return fail("batch_stopped", `Not attempted: the batch was stopped after a policy block (${state.blocked.policyId}).`, { policyId: state.blocked.policyId });
         }
+        // Bulk guard: one refund per command. Checked synchronously, so parallel calls in one step stop too.
+        state.refundsAttempted++;
+        if (state.refundsAttempted > 1) {
+          return fail("bulk_refund_blocked", "Only one refund per command. Bulk refunds are blocked; the owner must do them in PayPal.", { hint: "Stop the other refunds and explain to the owner." });
+        }
         const r = await io.paypal.refundCapture(input.invoiceId, { amountInr: input.amountInr, note: input.reason }, call);
         if (!r.ok) {
           if (r.error.kind === "policy_blocked") {
-            state.blocked = { policyId: r.error.policyId ?? "unknown", message: r.error.message };
             emit({ type: "thinking", text: "Policy ne refund roka. Baaki refunds bhi rok diye." });
+            await onPolicyBlock(r.error, `refund (${input.invoiceId}${input.amountInr ? `, ${formatINR(input.amountInr)}` : ", poora amount"})`);
+            return { ...fromExec(r.error), alertPosted: true, hint: "Blocked by a Swytchcode policy before any network call. Bahi already posted the Slack alert; do not post another. Stop related actions and explain to the owner." };
           }
           return fromExec(r.error);
         }
@@ -470,6 +654,9 @@ export function createAgentTools(ctx: AgentToolContext) {
         }
         const key = text.trim().toLowerCase();
         if (kind === "alert" && state.alerts.has(key)) return { ok: true, skipped: true, message: "Same alert already posted." };
+        if (kind === "alert" && state.blockAlerted && /polic|block|rok|refund/i.test(text)) {
+          return { ok: true, skipped: true, message: "Bahi already posted the alert about this policy block. Not posting it twice." };
+        }
         if (kind === "alert" && state.alerts.size >= 5) return fail("too_many_alerts", "Five alerts already posted this run.");
         const r = kind === "update" ? await io.slack.postOps(text, call) : await io.slack.postAlert(text, call);
         if (!r.ok) return fromExec(r.error);

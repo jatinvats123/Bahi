@@ -41,13 +41,13 @@ export function createSlackLive(): SlackAdapter {
     return failure({ kind: "not_found", message: `Slack channel #${clean} not found. Create it and invite the Swytchcode Slack app.` }, ms);
   }
 
-  async function post(channelName: string, text: string, ctx?: CallCtx, kind: "update" | "alert" = "update"): Promise<Outcome<SlackPost>> {
+  async function post(channelName: string, text: string, ctx?: CallCtx, kind: "update" | "alert" | "approval" = "update"): Promise<Outcome<SlackPost>> {
     const ch = await resolveChannel(channelName, ctx);
     if (!ch.ok) return ch;
     const send = () =>
       liveCall("slackPost", { token: MANAGED_TOKEN, body: { channel: ch.value.id, text, unfurl_links: false, unfurl_media: false } }, SlackPostRawSchema, {
         ctx,
-        summary: `#${ch.value.name}${kind === "alert" ? " (alert)" : ""}: ${preview(text)}`,
+        summary: `#${ch.value.name}${kind === "update" ? "" : ` (${kind})`}: ${preview(text)}`,
         check: slackCheck,
         what: "Slack post",
       });
@@ -69,5 +69,6 @@ export function createSlackLive(): SlackAdapter {
       const env = getEnv();
       return post(env.SLACK_ALERTS_CHANNEL ?? env.SLACK_OPS_CHANNEL, text, ctx, "alert");
     },
+    postApproval: (text, ctx) => post(getEnv().SLACK_APPROVALS_CHANNEL, text, ctx, "approval"),
   };
 }

@@ -51,6 +51,13 @@ export const EnvSchema = z
 
     APPROVAL_THRESHOLD_INR: inr(50_000),
     REFUND_BLOCK_THRESHOLD_INR: inr(10_000),
+    /** How long a held invoice waits for the owner's decision before it expires. */
+    APPROVAL_TIMEOUT_SEC: z.preprocess(blankToUndefined, z.coerce.number().int().min(15).max(3600).default(300)),
+    /**
+     * gate (default): Swytchcode blocks large invoices until Bahi's approval desk stamps them.
+     * swytchcode: Swytchcode REQUIRES_APPROVAL (Slack HITL; needs a Swytchcode plan with approvals).
+     */
+    APPROVAL_MODE: z.preprocess(blankToUndefined, z.enum(["gate", "swytchcode"], { error: 'must be "gate" or "swytchcode"' }).default("gate")),
 
     LAYA_ENABLED: bool(false),
     LAYA_URL: z.preprocess(blankToUndefined, z.url({ error: "must be a URL like http://127.0.0.1:8000" }).default("http://127.0.0.1:8000")),
@@ -71,6 +78,8 @@ export const EnvSchema = z
     ),
 
     BUSINESS_NAME: withDefault("DukaanSetu"),
+    /** Where the owner opens Bahi (used in Slack approval links). */
+    BAHI_PUBLIC_URL: z.preprocess(blankToUndefined, z.url({ error: "must be a URL like http://localhost:3000" }).default("http://localhost:3000")),
     BUSINESS_EMAIL: z.preprocess(blankToUndefined, z.email({ error: "must be an email address" }).optional()),
     PAYPAL_CURRENCY: z.preprocess(blankToUndefined, z.enum(["INR", "USD"], { error: 'must be "INR" or "USD"' }).default("INR")),
     /** Only used when PAYPAL_CURRENCY=USD: rupees per dollar for the sandbox invoice amount. */

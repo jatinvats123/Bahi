@@ -1,14 +1,15 @@
-import { BrainIcon, ShieldCheckIcon } from "@phosphor-icons/react/ssr";
+import { BrainIcon } from "@phosphor-icons/react/ssr";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
+import { GuardrailsPanel } from "@/components/settings/GuardrailsPanel";
 import { IntegrationHealthCard } from "@/components/settings/IntegrationHealth";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ThemeSegment } from "@/components/shell/ThemeSegment";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { getPublicConfig } from "@/lib/config";
-import { formatINR } from "@/lib/format";
+import { guardrailStatus } from "@/lib/guardrails/status";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -27,6 +28,7 @@ function Row({ label, children, hint }: { label: string; children: ReactNode; hi
 export default async function SettingsPage() {
   await connection();
   const c = getPublicConfig();
+  const guard = await guardrailStatus();
 
   return (
     <div className="pb-16">
@@ -68,25 +70,7 @@ export default async function SettingsPage() {
             </div>
           </Card>
 
-          <Card labelledBy="guard-title">
-            <CardHeader
-              id="guard-title"
-              title="Guardrails"
-              hint="Paisa bina check ke nahi hilta."
-              action={<ShieldCheckIcon size={20} weight="duotone" className="text-paid-ink" aria-hidden />}
-            />
-            <dl>
-              <Row label="Approval limit" hint="Is se bade invoice Slack mein approval maangte hain.">
-                <span className="num font-semibold">{formatINR(c.approvalThresholdInr)}</span>
-              </Row>
-              <Row label="Refund block" hint="Bulk refund aur is se bada refund hamesha blocked.">
-                <span className="num font-semibold">{formatINR(c.refundBlockThresholdInr)}</span>
-              </Row>
-              <Row label="Duplicate hukum" hint="Idempotency keys, phase 4.">
-                Ek hi kaam do baar nahi hoga
-              </Row>
-            </dl>
-          </Card>
+          <GuardrailsPanel status={guard} />
 
           <Card labelledBy="brain-title">
             <CardHeader

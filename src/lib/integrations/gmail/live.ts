@@ -10,6 +10,7 @@ import {
   GmailListRawSchema,
   GmailMessageRawSchema,
   GmailSentRawSchema,
+  gmailSendBody,
   PROCESSED_LABEL,
   toEmailMessage,
   toSummaries,
@@ -57,7 +58,7 @@ export function createGmailLive(): GmailAdapter {
     },
 
     async sendEmail(input, ctx) {
-      const body = { raw: encodeBase64Url(buildRfc822(input)), ...(input.threadId ? { threadId: input.threadId } : {}) };
+      const body = gmailSendBody(input);
       const r = await liveCall("gmailSend", { params: { userId: "me" }, body }, GmailSentRawSchema, { ctx, summary: `${input.to}: ${input.subject}` });
       return r.ok ? success({ id: r.value.id, threadId: r.value.threadId }, r.ms) : r;
     },

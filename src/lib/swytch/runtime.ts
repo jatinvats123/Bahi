@@ -2,11 +2,12 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { getEnv } from "../env";
 import type { RunEventDraft } from "../events";
+import { isApprovalGate } from "../guardrails/policies";
 import { INTEGRATION_LABEL } from "../verbs";
 import { ownerMessage, unwrapKernelOutput, type ExecError } from "./errors";
 import { loadSwytchProject, paypalEndpointProblem, policiesTargeting, type SwytchProject } from "./project";
 import { toolById } from "./tools";
-import { resolveSwytchcodeBinary, runCli, runSdk, type TransportName, type TransportRequest, type TransportResponse } from "./transport";
+import { resolveSwytchcodeBinary, runCli, runCliText, runSdk, type TransportName, type TransportRequest, type TransportResponse } from "./transport";
 
 /**
  * The one door to the outside world. Every PayPal, Gmail, Slack, Notion and Jira
@@ -76,6 +77,10 @@ class SwytchcodeRuntime {
     return this.config.bin;
   }
 
+  get dir(): string {
+    return this.config.dir;
+  }
+
   project(): Promise<SwytchProject> {
     return loadSwytchProject(this.config.dir);
   }
@@ -93,15 +98,19 @@ class SwytchcodeRuntime {
       emit({ type: "tool_call", callId, integration, tool, inputSummary: opts.inputSummary ?? "" });
     }
 
-    const fail = (error: ExecError): ExecResult<T> => {
+    const fail = (raw: ExecError): ExecResult<T> => {
       const ms = elapsed();
+      // A block by an approval-gate policy means "waiting for the owner", not "never" (see guardrails/policies.ts).
+      const gated: ExecError = raw.kind === "policy_blocked" && isApprovalGate(raw.policyId) ? { ...raw, kind: "approval_required", approvalVia: "bahi" } : raw;
+      // The CLI prefixes the policy's own message with 'blocked by policy "<id>": '; the id is shown separately.
+      const error: ExecError = gated.policyId ? { ...gated, message: gated.message.replace(/^blocked by policy "[^"]+":\s*/, "") } : gated;
       if (emit && integration) {
         if (error.kind === "policy_blocked") {
           emit({ type: "policy", callId, decision: "blocked", policyId: error.policyId ?? "unknown", message: error.message });
         }
         if (error.kind === "approval_required") {
-          emit({ type: "policy", callId, decision: "approval_required", policyId: error.policyId ?? "unknown", message: "Approval chahiye" });
-          emit({ type: "approval", callId, status: "pending", channel: `#${this.config.approvalsChannel}` });
+          // The caller (the approval desk) emits the approval events and, once decided, the result.
+          emit({ type: "policy", callId, decision: "approval_required", policyId: error.policyId ?? "unknown", message: error.message });
         } else {
           emit({ type: "tool_result", callId, ok: false, summary: ownerMessage(error, INTEGRATION_LABEL[integration]), ms, retries: 0 });
         }
@@ -155,6 +164,22 @@ class SwytchcodeRuntime {
   }
 }
 
+/** What `swytchcode exec --explain` says a call would do (no network call, policies still apply). */
+export interface ExplainResult {
+  ok: boolean;
+  tool?: string;
+  provider?: string;
+  mode?: string;
+  endpoint?: string;
+  /** Set when a policy or validation stopped the explain. */
+  error?: string;
+}
+
+export function parseExplainOutput(text: string): Omit<ExplainResult, "ok"> {
+  const field = (name: string) => new RegExp(`^${name}:\\s+(.+)$`, "m").exec(text)?.[1]?.trim();
+  return { tool: field("Tool"), provider: field("Provider"), mode: field("Mode"), endpoint: field("Endpoint") };
+}
+
 /** Observer for successful raw responses (the smoke script records fixtures with it). */
 export type ExecTap = (call: { tool: string; input: ExecInput; data: unknown }) => void;
 let tap: ExecTap | undefined;
@@ -179,6 +204,23 @@ export function getSwytchRuntime(): SwytchcodeRuntime {
     });
   }
   return runtime;
+}
+
+/** Ask Swytchcode what a call would do, without making it (swy exec --explain). Never throws. */
+export async function explainTool(tool: string, input: ExecInput = {}): Promise<ExplainResult> {
+  const rt = getSwytchRuntime();
+  const r = await runCliText({ bin: rt.binary, args: ["exec", tool, "--explain"], cwd: rt.dir, stdin: JSON.stringify(input), timeoutMs: 20_000 });
+  // swytchcode 2.23.5 prints the explanation on stderr, next to its log lines.
+  const parsed = parseExplainOutput(`${r.stdout}\n${r.stderr}`);
+  if (r.code === 0 && parsed.endpoint) return { ok: true, ...parsed };
+  const policy = /blocked by policy \\?"([^"\\]+)/.exec(r.stderr + r.stdout)?.[1];
+  return { ok: false, error: policy ? `blocked by policy ${policy}` : (r.error ?? `explain exited with ${String(r.code)}`) };
+}
+
+/** Run a read-only swytchcode subcommand in the project folder (audit, policy list). */
+export function swytchcodeText(args: string[], timeoutMs = 20_000) {
+  const rt = getSwytchRuntime();
+  return runCliText({ bin: rt.binary, args, cwd: rt.dir, timeoutMs });
 }
 
 /** Execute one Swytchcode tool. See SwytchcodeRuntime.execute. */

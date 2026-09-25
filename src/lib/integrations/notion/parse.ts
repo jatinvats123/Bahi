@@ -161,6 +161,7 @@ export const PageRawSchema = z
     object: z.literal("page").optional(),
     id: z.string(),
     url: z.string().optional(),
+    last_edited_time: z.string().optional(),
     in_trash: z.boolean().optional(),
     archived: z.boolean().optional(),
     properties: z.record(z.string(), PropValue),
@@ -200,6 +201,7 @@ export function toLedgerRow(page: z.infer<typeof PageRawSchema>): LedgerRow {
     jiraKey: text(p["Jira key"]),
     intentKey: text(p["Intent key"]),
     url: page.url ?? null,
+    updatedAt: page.last_edited_time ?? null,
   };
 }
 

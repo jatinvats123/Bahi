@@ -41,8 +41,8 @@ export interface ToolEntry extends EntryBase {
   state: ToolState;
   stamp: StampKind | null;
   policy: { decision: PolicyDecision; policyId: string; message: string } | null;
-  approval: { status: ApprovalStatus; channel: string; by: string | null } | null;
-  result: { ok: boolean; summary: string; ms: number; retries: number } | null;
+  approval: ApprovalInfo | null;
+  result: { ok: boolean; summary: string; ms: number; retries: number; tags: string[] } | null;
   updatedTs: string;
 }
 
@@ -56,14 +56,31 @@ export type TimelineEntry =
   | (EntryBase & { kind: "final"; summary: string })
   | (EntryBase & { kind: "error"; message: string; recoverable: boolean });
 
-export interface PendingApproval {
+/** Everything the approval card shows. Detail fields are null for runs recorded before phase 4. */
+export interface ApprovalInfo {
+  status: ApprovalStatus;
+  channel: string;
+  by: string | null;
+  approvalId: string | null;
+  via: "bahi" | "swytchcode" | null;
+  policyId: string | null;
+  client: string | null;
+  amountInr: number | null;
+  description: string | null;
+  explain: string | null;
+  expiresAt: string | null;
+  /** When the approval was first requested. */
+  since: string;
+  /** When it was decided (approved / denied / expired). */
+  decidedAt: string | null;
+}
+
+export interface PendingApproval extends ApprovalInfo {
   callId: string;
   tool: string;
   integration: Integration;
   title: string;
   inputSummary: string;
-  channel: string;
-  since: string;
 }
 
 export interface RunView {
@@ -236,19 +253,34 @@ export function foldRunEvents(input: readonly RunEvent[]): RunView {
       case "approval": {
         const entry = tools.get(ev.callId);
         if (!entry) break;
-        entry.approval = { status: ev.status, channel: ev.channel, by: ev.by ?? null };
+        const prev = entry.approval;
+        // Later events may carry fewer details (e.g. "approved" by id only): keep what we knew.
+        entry.approval = {
+          status: ev.status,
+          channel: ev.channel,
+          by: ev.by ?? prev?.by ?? null,
+          approvalId: ev.approvalId ?? prev?.approvalId ?? null,
+          via: ev.via ?? prev?.via ?? null,
+          policyId: ev.policyId ?? prev?.policyId ?? (entry.policy?.decision === "approval_required" ? entry.policy.policyId : null),
+          client: ev.client ?? prev?.client ?? null,
+          amountInr: ev.amountInr ?? prev?.amountInr ?? null,
+          description: ev.description ?? prev?.description ?? null,
+          explain: ev.explain ?? prev?.explain ?? null,
+          expiresAt: ev.expiresAt ?? prev?.expiresAt ?? null,
+          since: prev?.since ?? ev.ts,
+          decidedAt: ev.status === "pending" ? null : ev.ts,
+        };
         entry.updatedTs = ev.ts;
         if (ev.status === "pending") {
           if (entry.state !== "running" && entry.state !== "awaiting") break;
           entry.state = "awaiting";
           pending.set(ev.callId, {
+            ...entry.approval,
             callId: ev.callId,
             tool: entry.tool,
             integration: entry.integration,
             title: toolVerb(entry.tool, entry.integration).running,
             inputSummary: entry.inputSummary,
-            channel: ev.channel,
-            since: ev.ts,
           });
         } else {
           pending.delete(ev.callId);
@@ -268,7 +300,7 @@ export function foldRunEvents(input: readonly RunEvent[]): RunView {
       case "tool_result": {
         const entry = tools.get(ev.callId);
         if (!entry) break;
-        entry.result = { ok: ev.ok, summary: ev.summary, ms: ev.ms, retries: ev.retries };
+        entry.result = { ok: ev.ok, summary: ev.summary, ms: ev.ms, retries: ev.retries, tags: ev.tags ?? [] };
         entry.updatedTs = ev.ts;
         if (entry.state !== "blocked" && entry.state !== "denied" && entry.state !== "expired") {
           entry.state = ev.ok ? "ok" : "failed";
@@ -287,6 +319,9 @@ export function foldRunEvents(input: readonly RunEvent[]): RunView {
         view.final = ev.summary;
         view.endedAt = ev.ts;
         view.entries.push({ key, seq: ev.seq, ts: ev.ts, kind: "final", summary: ev.summary });
+        break;
+      case "heartbeat":
+        // Keep-alive only: nothing to show.
         break;
       case "error":
         view.error = { message: ev.message, recoverable: ev.recoverable };

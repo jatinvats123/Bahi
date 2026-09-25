@@ -159,3 +159,62 @@ describe("run-reducer: other outcomes", () => {
     expect(foldRunEvents([]).status).toBe("idle");
   });
 });
+
+describe("approval card transitions (phase 4)", () => {
+  const T = (i: number) => new Date(START.getTime() + i * 1000).toISOString();
+  const head = (): RunEvent[] => [
+    { runId: "r", seq: 1, ts: T(1), type: "run_started", command: "Verma Sweets ko 80,000 ka invoice bhejo", inputMode: "text", mode: "live" },
+    { runId: "r", seq: 2, ts: T(2), type: "tool_call", callId: "c1", integration: "paypal", tool: "invoices.invoicing.invoices.create", inputSummary: "Verma Sweets, ₹80,000" },
+    { runId: "r", seq: 3, ts: T(3), type: "policy", callId: "c1", decision: "approval_required", policyId: "invoice-approval-over-threshold", message: "Invoice above Rs 50,000 needs the owner's approval" },
+    {
+      runId: "r", seq: 4, ts: T(4), type: "approval", callId: "c1", status: "pending", channel: "#approvals",
+      approvalId: "apr_0123456789ab", via: "bahi", policyId: "invoice-approval-over-threshold", client: "Verma Sweets", amountInr: 80_000,
+      description: "Diwali order", explain: "POST https://api-m.sandbox.paypal.com/v2/invoicing/invoices", expiresAt: T(300),
+    },
+    { runId: "r", seq: 5, ts: T(14), type: "heartbeat", waitingFor: "approval", waitedSec: 10 },
+  ];
+
+  it("pending: AWAITING stamp and a right-rail card with client, amount, policy and approval id; heartbeat ignored", () => {
+    const s = dispatchAll(head());
+    expect(s.view.status).toBe("awaiting_approval");
+    expect(s.view.stamp).toBe("awaiting");
+    expect(tool(s, "c1")).toMatchObject({ state: "awaiting", stamp: "awaiting" });
+    expect(s.view.pendingApprovals[0]).toMatchObject({ approvalId: "apr_0123456789ab", client: "Verma Sweets", amountInr: 80_000, policyId: "invoice-approval-over-threshold", via: "bahi" });
+    expect(s.view.entries.filter((e) => e.kind !== "tool" && e.kind !== "started")).toHaveLength(0);
+    expect(s.view.missingSeqs).toEqual([]);
+  });
+
+  it("pending -> approved: APPROVED stamp, details kept, result applies to the same entry", () => {
+    const s = dispatchAll([
+      ...head(),
+      { runId: "r", seq: 6, ts: T(20), type: "approval", callId: "c1", status: "approved", channel: "#approvals", approvalId: "apr_0123456789ab", by: "Jatin (dashboard)" },
+      { runId: "r", seq: 7, ts: T(21), type: "tool_call", callId: "c1", integration: "paypal", tool: "invoices.invoicing.invoices.create", inputSummary: "Verma Sweets, ₹80,000" },
+      { runId: "r", seq: 8, ts: T(22), type: "policy", callId: "c1", decision: "allowed", policyId: "invoice-approval-over-threshold", message: "Swytchcode: policy ok" },
+      { runId: "r", seq: 9, ts: T(23), type: "tool_result", callId: "c1", ok: true, summary: "Invoice banaya", ms: 900, retries: 0 },
+    ]);
+    const e = tool(s, "c1");
+    expect(e).toMatchObject({ state: "ok", stamp: "approved" });
+    expect(e.approval).toMatchObject({ status: "approved", by: "Jatin (dashboard)", client: "Verma Sweets", amountInr: 80_000, decidedAt: T(20) });
+    expect(s.view.pendingApprovals).toHaveLength(0);
+    expect(s.view.entries.filter((x) => x.kind === "tool")).toHaveLength(1);
+  });
+
+  it("pending -> denied and pending -> expired", () => {
+    const denied = dispatchAll([...head(), { runId: "r", seq: 6, ts: T(20), type: "approval", callId: "c1", status: "denied", channel: "#approvals", by: "owner" }]);
+    expect(tool(denied, "c1")).toMatchObject({ state: "denied", stamp: "denied" });
+    expect(denied.view.status).toBe("denied");
+    const expired = dispatchAll([...head(), { runId: "r", seq: 6, ts: T(300), type: "approval", callId: "c1", status: "expired", channel: "#approvals" }]);
+    expect(tool(expired, "c1")).toMatchObject({ state: "expired", stamp: "expired" });
+    expect(expired.view.status).toBe("expired");
+    expect(expired.view.stamp).toBe("expired");
+  });
+
+  it("carries result tags such as idempotent", () => {
+    const s = dispatchAll([
+      head()[0]!,
+      { runId: "r", seq: 2, ts: T(2), type: "tool_call", callId: "n1", integration: "notion", tool: "notion.query.create", inputSummary: "intent" },
+      { runId: "r", seq: 3, ts: T(3), type: "tool_result", callId: "n1", ok: true, summary: "Ye invoice aaj already bheja ja chuka hai", ms: 300, retries: 0, tags: ["idempotent"] },
+    ]);
+    expect(tool(s, "n1").result?.tags).toEqual(["idempotent"]);
+  });
+});

@@ -51,10 +51,12 @@ Every external action runs through Swytchcode, so money never moves without poli
 - `src/lib/integrations/` domain adapters: `types.ts` interfaces + zod domain types, `<provider>/parse.ts` (pure) + `<provider>/live.ts`, `mock/` (world + twins), `index.ts` (`getIntegrations()` by SWYTCH_MODE). Adapters return `Outcome<T>`, never throw.
 - `src/lib/health.ts` + `src/app/api/health/route.ts` integration health. `src/lib/clients.ts` client directory (+ `data/clients.local.json` overrides) and spoken-name matching.
 - `src/lib/agent/` the brain: `orchestrator.ts` (`runAgent`: stamps + streams RunEvents, AI SDK `generateText` loop, max 12 steps, speak + final), `tools.ts` (13 domain tools over the adapters, code-level guardrails), `model.ts` (Gemini -> backup key -> Groq per LLM call, rate-limit waits, daily-quota cooldown), `defaults.ts` (model chains), `prompt.ts` (system prompt + owner language), `amount.ts` (Hinglish amount parser), `resolve-client.ts` (spoken name -> client), `untrusted.ts` (email fencing + injection signals).
-- `src/lib/brief.ts` aaj ka hisaab (Notion, optionally verified with PayPal). `src/lib/store/run-persister.ts` throttled run saves while streaming.
-- API: `POST/GET /api/runs` (NDJSON stream / history), `GET /api/runs/[id]`, `GET /api/ledger`, `GET /api/brief`, `GET /api/health`.
-- UI: `src/components/command/useRun.ts` (stream -> reducer, stop), `src/components/activity/RunReplay.tsx`, `/activity/[id]` replay page.
-- `scripts/` swytch-configure, setup-notion, smoke-swytch, seed-gmail, seed-inbox, eval-agent, scenario, gen-tools-doc (tsx). `docs/TOOLS.md` (generated), `docs/SETUP.md` (live setup clicks).
+- `src/lib/brief.ts` aaj ka hisaab (Notion, optionally verified with PayPal). `src/lib/store/run-persister.ts` throttled run saves while streaming. `src/lib/store/run-bus.ts` live runs in process (reattach with `?tail=1`, explicit stop).
+- `src/lib/guardrails/` phase 4: `policies.ts` (pure: the 3 Swytchcode policies as code, Go `%v` renderer, local evaluator, gt-regex, aligned Gmail `To:` line, plain-language explainers), `config.ts` (env + clients -> config), `approvals.ts` (file-backed approval store, cross-process waits), `desk.ts` (hold -> Slack -> wait with heartbeats -> decision), `intent-key.ts`, `audit.ts` (swy audit + exec log + runs + desk -> Audit rows), `status.ts` (Settings panel), `live.ts` (explain, HITL status). Policies file: `npm run policies:sync` (never hand-edit `.swytchcode/integrations/policies.json`; it is gitignored, `docs/policies.public.json` is the committed copy).
+- `src/lib/integrations/paypal/body.ts` PayPal request bodies shared by live + mock (mock enforces the same policies via `mock/policy.ts`).
+- API: `POST/GET /api/runs` (NDJSON stream / history), `GET /api/runs/[id]` (`?tail=1` live NDJSON), `POST /api/runs/[id]/stop`, `GET /api/runs/live`, `GET /api/approvals`, `POST /api/approvals/[id]` {decision}, `GET /api/ledger`, `GET /api/brief`, `GET /api/health`.
+- UI: `src/components/command/useRun.ts` (stream -> reducer, stop via API, reattach), `src/components/approvals/` (ApprovalCard, useApprovals polling), `src/components/activity/RunReplay.tsx` + `AuditTable.tsx` (`/activity?tab=audit`), `src/components/settings/GuardrailsPanel.tsx`, `/activity/[id]` replay page.
+- `scripts/` swytch-configure, setup-notion, smoke-swytch, seed-gmail, seed-inbox, eval-agent, scenario, gen-tools-doc, policies-sync, approve (tsx). `docs/TOOLS.md` (generated), `docs/SETUP.md` (live setup clicks), `docs/GUARDRAILS.md` (policies, approval, idempotency, audit).
 
 ## 4. Demo scenarios (acceptance targets for the whole project)
 
@@ -115,7 +117,8 @@ If a design-taste skill is available, use it for every UI decision (the brief's 
 - `npm run check` = typecheck + lint + test
 - `npm run contrast` = WCAG contrast report for the colour tokens in globals.css
 - `npm run swytch:configure [-- --apply]`, `setup:notion`, `smoke:swytch [-- --write --record]`, `seed:gmail [-- --apply]`, `docs:tools`
-- `npm run eval:agent [-- --only S1 --runs 2 --pause 20 --verbose]` (mock adapters, real LLM), `npm run scenario -- S1` (live), `npm run seed:inbox [-- --dry | --print]` (live)
+- `npm run eval:agent [-- --only S1 --runs 2 --pause 20 --verbose]` (mock adapters, real LLM), `npm run scenario -- S1|S2 [--auto]|S2-deny|S5|dup|email-guard` (live, verified), `npm run seed:inbox [-- --dry | --print]` (live)
+- `npm run policies:sync [-- --probe | --check]` (after changing thresholds, currency rate, APPROVAL_MODE or clients), `npm run approve [-- <apr_id> [--deny]]`
 
 ## 8. End-of-phase protocol (every phase follows it)
 

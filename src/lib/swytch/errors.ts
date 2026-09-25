@@ -33,6 +33,8 @@ export interface ExecError {
   policyId?: string;
   /** Swytchcode approval request id when the call is held for a human. */
   approvalRequestId?: string;
+  /** Who holds an approval_required call: Swytchcode HITL (Slack) or Bahi's approval desk (gate policy). */
+  approvalVia?: "swytchcode" | "bahi";
   exitCode?: number | null;
   /** Swytchcode's own category string, when it sent one. */
   category?: string;
@@ -119,6 +121,7 @@ const CATEGORY_KIND: Record<string, ExecErrorKind> = {
 
 const APPROVAL_RE = /Approval requested for (\S+) \(policy "([^"]+)"\)\. Request ([A-Za-z0-9_-]+)/;
 const POLICY_RE = /blocked by policy "([^"]+)"/;
+const APPROVAL_REFUSED_RE = /approval request refused|approval requests are not included in your current plan/i;
 const DENIED_RE = /approval (was )?(denied|rejected)/i;
 const EXPIRED_RE = /approval (request )?(has )?expired/i;
 const HTTP_STATUS_RE = /\b(?:status(?: code)?|HTTP)[ :=]+([1-5]\d\d)\b/i;
@@ -177,12 +180,20 @@ export function classifyCliFailure(f: CliFailure): ExecError {
   if (approval || /error=approval pending/.test(text)) {
     return {
       kind: "approval_required",
+      approvalVia: "swytchcode",
       message: "Held for human approval in Slack",
       policyId: approval?.[2],
       approvalRequestId: approval?.[3],
       exitCode: f.exitCode,
       retryable: false,
     };
+  }
+  // REQUIRES_APPROVAL on a plan without approvals: the command is not run (observed 26 Sep 2026, exit 6).
+  if (APPROVAL_REFUSED_RE.test(text)) {
+    return applyTextHints(
+      { kind: "policy_blocked", message: "Swytchcode could not create the approval request (approvals are not on this Swytchcode plan). The command was not run. Set APPROVAL_MODE=gate and run npm run policies:sync.", exitCode: f.exitCode, category: "approval_unavailable", retryable: false },
+      text,
+    );
   }
   if (DENIED_RE.test(text)) {
     return applyTextHints({ kind: "approval_denied", message: "Approval was denied", exitCode: f.exitCode, retryable: false }, text);

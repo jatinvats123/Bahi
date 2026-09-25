@@ -5,11 +5,13 @@ import { generateText, hasToolCall, isStepCount } from "ai";
 import { getClientDirectory } from "../clients";
 import { getEnv } from "../env";
 import type { RunEvent, RunEventDraft } from "../events";
+import { getApprovalStore } from "../guardrails/approvals";
+import { explainInvoiceLive, swytchcodeHitlStatus } from "../guardrails/live";
 import { getIntegrations } from "../integrations";
 import type { Integrations } from "../integrations/types";
 import { AGENT_PROVIDER_OPTIONS, AllModelsFailedError, createFallbackModel, modelCandidatesFromEnv, type FallbackModel } from "./model";
 import { buildSystemPrompt, detectOwnerLanguage, MAX_SPEAK_WORDS, MAX_STEPS } from "./prompt";
-import { createAgentTools, createRunState, type AgentRunState, type AgentToolName } from "./tools";
+import { createAgentTools, createRunState, type AgentRunState, type AgentToolName, type ApprovalDeps } from "./tools";
 
 /**
  * Runs one owner command end to end: stamps and streams RunEvents, runs the
@@ -32,8 +34,10 @@ export interface RunOptions {
   now?: () => Date;
   /** Tests inject a model; otherwise Gemini -> backup key -> Groq from env. */
   model?: LanguageModelV4;
-  /** Whole-run budget. */
+  /** Whole-run budget. Defaults to RUN_TIMEOUT_MS plus the approval window. */
   totalTimeoutMs?: number;
+  /** Approval desk wiring; defaults to the app store and env. Tests pass their own. */
+  approvals?: ApprovalDeps;
 }
 
 export interface RunResult {
@@ -69,6 +73,7 @@ export function clampWords(text: string, max = MAX_SPEAK_WORDS): string {
 export function summaryFromState(state: AgentRunState): string | null {
   const parts = [...state.facts, ...state.moneyActions];
   if (state.blocked) parts.push(`policy ne roka (${state.blocked.policyId})`);
+  if (state.approvalStopped) parts.push(`${state.approvalStopped.client} ka invoice ${state.approvalStopped.status === "denied" ? "approve nahi hua" : "approval ke bina expire hua"}`);
   if (state.alerts.size) parts.push(`${state.alerts.size} Slack alert bheja`);
   if (state.slackUpdates) parts.push("team ko Slack par update kiya");
   return parts.length ? `Ho gaya: ${parts.join("; ")}.` : null;
@@ -123,7 +128,13 @@ export async function runAgent(req: RunRequest, opts: RunOptions = {}): Promise<
   const onAbort = () => controller.abort(opts.signal?.reason);
   if (opts.signal?.aborted) controller.abort(opts.signal.reason);
   else opts.signal?.addEventListener("abort", onAbort, { once: true });
-  const timer = setTimeout(() => controller.abort(new Error("run timeout")), opts.totalTimeoutMs ?? RUN_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(new Error("run timeout")), opts.totalTimeoutMs ?? RUN_TIMEOUT_MS + env.APPROVAL_TIMEOUT_SEC * 1000);
+  const approvals: ApprovalDeps = opts.approvals ?? {
+    store: getApprovalStore(),
+    timeoutMs: env.APPROVAL_TIMEOUT_SEC * 1000,
+    dashboardUrl: env.BAHI_PUBLIC_URL.replace(/\/$/, ""),
+    ...(integrations.mode === "live" ? { explainInvoice: explainInvoiceLive, swytchcodeStatus: swytchcodeHitlStatus } : {}),
+  };
 
   const tools = createAgentTools({
     integrations,
@@ -139,6 +150,8 @@ export async function runAgent(req: RunRequest, opts: RunOptions = {}): Promise<
     now,
     signal: controller.signal,
     state,
+    runId,
+    approvals,
   });
 
   const modelLabel = () => ("active" in model ? (model as FallbackModel).active.label : model.modelId);

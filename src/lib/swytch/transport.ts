@@ -130,6 +130,34 @@ export function runCli(req: TransportRequest): Promise<TransportResponse> {
 }
 
 /**
+ * Run any other swytchcode subcommand (audit, policy, exec --explain) and collect its text
+ * output. Async spawn, no shell, stdin closed after `stdin`. Never throws.
+ */
+export function runCliText(opts: { bin: string | null; args: string[]; cwd: string; timeoutMs?: number; stdin?: string }): Promise<{ code: number | null; stdout: string; stderr: string; error?: string }> {
+  if (!opts.bin) return Promise.resolve({ code: null, stdout: "", stderr: "", error: "Swytchcode CLI not found" });
+  const bin = opts.bin;
+  return new Promise((resolve) => {
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    const child = spawn(bin, opts.args, { cwd: opts.cwd, env: process.env, windowsHide: true, shell: false });
+    const timer = setTimeout(() => child.kill(), opts.timeoutMs ?? 20_000);
+    const done = (r: { code: number | null; stdout: string; stderr: string; error?: string }) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(r);
+    };
+    child.stdout.setEncoding("utf8").on("data", (d: string) => (stdout += d));
+    child.stderr.setEncoding("utf8").on("data", (d: string) => (stderr += d));
+    child.on("error", (e) => done({ code: null, stdout, stderr, error: e.message }));
+    child.on("close", (code) => done({ code, stdout, stderr }));
+    child.stdin.on("error", () => {});
+    child.stdin.end(opts.stdin ?? "");
+  });
+}
+
+/**
  * Runs @swytchcode/runtime inside a worker so its spawnSync cannot block the server.
  * The worker source is inline (eval) so the bundler never has to trace a worker file;
  * it require()s the package from node_modules at run time.

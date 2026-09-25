@@ -57,7 +57,10 @@ describe("runAgent", () => {
     expect(types).toEqual([
       "run_started",
       "thinking",
+      "call:notion.query.create",
+      "tool_result",
       "call:invoices.invoicing.invoices.create",
+      "policy",
       "tool_result",
       "call:invoices.invoicing.send.create",
       "tool_result",

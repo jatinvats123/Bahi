@@ -20,7 +20,7 @@ export interface RunStore {
   save(record: RunRecord): Promise<void>;
 }
 
-async function renameWithRetry(from: string, to: string): Promise<void> {
+export async function renameWithRetry(from: string, to: string): Promise<void> {
   // Windows can briefly lock files (antivirus, indexer); retry a few times.
   for (let attempt = 0; ; attempt++) {
     try {

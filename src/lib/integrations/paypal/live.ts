@@ -6,6 +6,7 @@ import { liveCall } from "../live-call";
 import { toPaypalMoney, type CurrencyConfig } from "../money";
 import { andThen, failure, success, type Outcome } from "../result";
 import type { CallCtx, CreateInvoiceInput, PaypalAdapter, PaypalInvoice } from "../types";
+import { invoiceCreateBody, refundBody } from "./body";
 import {
   invoiceIdFromHref,
   PaypalInvoiceListRawSchema,
@@ -17,7 +18,6 @@ import {
   toRefund,
 } from "./parse";
 
-const DAY_MS = 86_400_000;
 /** PayPal answers some calls with 202/204 and no body: the kernel prints null or {}. */
 const Empty = z.union([z.null(), z.object({}).loose(), z.string()]);
 
@@ -37,22 +37,7 @@ export function createPaypalLive(): PaypalAdapter {
   return {
     async createInvoice(input: CreateInvoiceInput, ctx) {
       const env = getEnv();
-      const today = new Date();
-      const body = {
-        detail: {
-          currency_code: cfg.currency,
-          invoice_date: istDateKey(today),
-          payment_term: { term_type: "DUE_ON_DATE_SPECIFIED", due_date: input.dueDate ?? istDateKey(new Date(today.getTime() + 15 * DAY_MS)) },
-          ...(input.intentKey ? { reference: input.intentKey } : {}),
-          note: input.note ?? `${env.BUSINESS_NAME} ki taraf se. Shukriya!`,
-        },
-        invoicer: {
-          business_name: env.BUSINESS_NAME,
-          ...(env.PAYPAL_MERCHANT_EMAIL ? { email_address: env.PAYPAL_MERCHANT_EMAIL } : {}),
-        },
-        primary_recipients: [{ billing_info: { name: { full_name: input.clientName }, email_address: input.recipientEmail } }],
-        items: [{ name: input.description.slice(0, 200), quantity: "1", unit_amount: toPaypalMoney(input.amountInr, cfg), unit_of_measure: "QUANTITY" }],
-      };
+      const body = invoiceCreateBody(input, { cfg, businessName: env.BUSINESS_NAME, merchantEmail: env.PAYPAL_MERCHANT_EMAIL });
       const r = await liveCall(
         "paypalCreateInvoice",
         { body, headers: { Prefer: "return=representation" } },
@@ -116,10 +101,7 @@ export function createPaypalLive(): PaypalAdapter {
     },
 
     async refundCapture(captureId, opts = {}, ctx) {
-      const body = {
-        ...(opts.amountInr ? { amount: toPaypalMoney(opts.amountInr, cfg) } : {}),
-        ...(opts.note ? { note_to_payer: opts.note } : {}),
-      };
+      const body = refundBody(opts, cfg);
       const r = await liveCall("paypalRefundCapture", { params: { capture_id: captureId }, body }, PaypalRefundRawSchema, {
         ctx,
         summary: opts.amountInr ? `${captureId}, ${formatINR(opts.amountInr)}` : `${captureId}, full`,
