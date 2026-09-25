@@ -1,0 +1,6 @@
+{
+  "_note": "Real capture 25 Sep 2026, swytchcode 2.23.5, PayPal sandbox. exec-http-400",
+  "exitCode": 0,
+  "stdout": "{\"data\":{\"debug_id\":\"f670473db8df8\",\"details\":[{\"description\":\"Currency Code is not valid.\",\"field\":\"/currency_code\",\"location\":\"body\",\"value\":\"INR\"},{\"description\":\"Currency Code is not valid.\",\"field\":\"/items/0/unit_price/currency_code\",\"location\":\"body\",\"value\":\"INR\"}],\"links\":[{\"href\":\"https://developer.paypal.com/docs/api/invoicing/#errors\",\"method\":\"GET\"}],\"message\":\"Request is not well-formed, syntactically incorrect, or violates schema.\",\"name\":\"INVALID_REQUEST\"},\"error_category\":\"validation\",\"request\":{\"method\":\"POST\",\"url\":\"https://api-m.sandbox.paypal.com/v2/invoicing/invoices\"},\"retryable\":false,\"status_code\":400,\"suggested_action\":\"the request was rejected; check the arguments against the tool's input schema\"}\n",
+  "stderr": ""
+}

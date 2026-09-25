@@ -44,7 +44,7 @@ describe("CLI exit codes", () => {
 describe("real swytchcode 2.23.5 failures (fixtures/recorded/cli)", () => {
   it("has a fixture for every case", () => {
     expect(readdirSync(dir).sort()).toEqual(
-      ["approval-pending.json", "audit-policy.json", "auth-missing.json", "dry-run.json", "network.json", "not-found.json", "policy-blocked.json"].sort(),
+      ["approval-pending.json", "audit-policy.json", "auth-missing.json", "dry-run.json", "exec-http-200.json", "exec-http-400.json", "network.json", "not-found.json", "policy-blocked.json"].sort(),
     );
   });
 
@@ -133,6 +133,29 @@ describe("kernel output and owner messages", () => {
     expect(unwrapKernelOutput({ id: 1 })).toEqual({ ok: true, data: { id: 1 } });
     expect(unwrapKernelOutput(null)).toEqual({ ok: true, data: null });
     expect(unwrapKernelOutput({ success: false, error: "nope" })).toMatchObject({ ok: false, error: { kind: "provider", message: "nope" } });
+  });
+
+  it("unwraps the real exec envelope: data on 2xx, an error on HTTP 4xx even though the CLI exits 0", () => {
+    const ok = sample("exec-http-200");
+    expect(ok.exitCode).toBe(0);
+    expect(unwrapKernelOutput(JSON.parse(ok.stdout))).toEqual({ ok: true, data: {} });
+
+    const bad = sample("exec-http-400");
+    expect(bad.exitCode).toBe(0);
+    const r = unwrapKernelOutput(JSON.parse(bad.stdout));
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error).toMatchObject({ kind: "validation", httpStatus: 400, retryable: false });
+      expect(r.error.message).toMatch(/HTTP 400: .*Currency Code is not valid/);
+    }
+  });
+
+  it("maps HTTP statuses when there is no category", () => {
+    const env = (status: number, body: unknown) => ({ data: body, request: { method: "GET", url: "https://x" }, status_code: status });
+    expect(unwrapKernelOutput(env(401, { error: "invalid_token", error_description: "Token expired" }))).toMatchObject({ ok: false, error: { kind: "auth", message: "HTTP 401: invalid_token: Token expired" } });
+    expect(unwrapKernelOutput(env(404, { message: "not found" }))).toMatchObject({ ok: false, error: { kind: "not_found" } });
+    expect(unwrapKernelOutput(env(503, null))).toMatchObject({ ok: false, error: { kind: "provider", retryable: true, message: "HTTP 503" } });
+    expect(unwrapKernelOutput(env(201, { id: "INV2-1" }))).toEqual({ ok: true, data: { id: "INV2-1" } });
   });
 
   it("owner messages are short, plain and never leak the raw error", () => {

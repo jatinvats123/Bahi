@@ -264,17 +264,70 @@ export function ownerMessage(err: ExecError, integrationLabel: string): string {
   }
 }
 
+/** Short provider-side reason from an HTTP error body (PayPal, Google, Notion, Atlassian shapes). */
+function providerReason(body: unknown): string | null {
+  if (!body || typeof body !== "object") return typeof body === "string" && body ? body.slice(0, 300) : null;
+  const b = body as Record<string, unknown>;
+  const parts: string[] = [];
+  const err = b.error;
+  if (typeof b.message === "string") parts.push(b.message);
+  else if (err && typeof err === "object" && typeof (err as { message?: unknown }).message === "string") parts.push((err as { message: string }).message);
+  else if (typeof err === "string") parts.push(typeof b.error_description === "string" ? `${err}: ${b.error_description}` : err);
+  if (Array.isArray(b.details)) {
+    for (const d of b.details.slice(0, 3)) {
+      if (d && typeof d === "object") {
+        const x = d as { description?: unknown; field?: unknown; issue?: unknown };
+        const text = typeof x.description === "string" ? x.description : typeof x.issue === "string" ? x.issue : null;
+        if (text) parts.push(typeof x.field === "string" ? `${x.field}: ${text}` : text);
+      }
+    }
+  }
+  if (Array.isArray(b.errorMessages)) parts.push(...b.errorMessages.filter((m): m is string => typeof m === "string").slice(0, 3));
+  return parts.length ? parts.join("; ").slice(0, 400) : null;
+}
+
+function kindForHttp(status: number, category: string | undefined): ExecErrorKind {
+  const byCategory = category ? CATEGORY_KIND[category] : undefined;
+  if (byCategory) return byCategory;
+  if (status === 401 || status === 403) return "auth";
+  if (status === 404) return "not_found";
+  if (status === 408 || status === 504) return "timeout";
+  if (status === 400 || status === 422) return "validation";
+  return "provider";
+}
+
 /**
- * The exec docs show successes wrapped as {"success": true, "result": {...}}, but
- * dry runs print the bare object. Accept both; a {"success": false} envelope is a
- * provider error.
+ * What `swytchcode exec` prints on stdout. Observed in 2.23.5 (fixtures/recorded/cli/exec-http-*.json):
+ * every provider answer, success or HTTP error, exits 0 as
+ *   { data, request: { method, url }, status_code, [error_category, retryable, suggested_action] }.
+ * So an HTTP 400 is NOT a CLI failure: status_code decides. The docs' {"success", "result"} shape and bare
+ * dry-run objects are still accepted.
  */
 export function unwrapKernelOutput(data: unknown): { ok: true; data: unknown } | { ok: false; error: ExecError } {
-  if (data && typeof data === "object" && !Array.isArray(data) && "success" in data && typeof (data as { success: unknown }).success === "boolean") {
-    const env = data as { success: boolean; result?: unknown; error?: unknown };
-    if (env.success) return { ok: true, data: "result" in env ? env.result : null };
-    const msg = typeof env.error === "string" ? env.error : JSON.stringify(env.error ?? "provider error").slice(0, 300);
-    return { ok: false, error: { kind: "provider", message: msg } };
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>;
+    if (typeof obj.status_code === "number" && "data" in obj && "request" in obj) {
+      const status = obj.status_code;
+      if (status < 400) return { ok: true, data: obj.data };
+      const category = typeof obj.error_category === "string" ? obj.error_category : undefined;
+      const reason = providerReason(obj.data);
+      return {
+        ok: false,
+        error: {
+          kind: kindForHttp(status, category),
+          message: `HTTP ${status}${reason ? `: ${reason}` : ""}`,
+          httpStatus: status,
+          category,
+          retryable: typeof obj.retryable === "boolean" ? obj.retryable : status >= 500 || status === 429,
+          raw: { status, category, body: obj.data },
+        },
+      };
+    }
+    if ("success" in obj && typeof obj.success === "boolean") {
+      if (obj.success) return { ok: true, data: "result" in obj ? obj.result : null };
+      const msg = typeof obj.error === "string" ? obj.error : JSON.stringify(obj.error ?? "provider error").slice(0, 300);
+      return { ok: false, error: { kind: "provider", message: msg } };
+    }
   }
   return { ok: true, data };
 }

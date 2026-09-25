@@ -50,6 +50,13 @@ Running log across phases. Update at the end of every phase (see CLAUDE.md secti
 - **From the UI (mock mode, real LLM, headless Chrome)**: S6 and S3 complete with every step streaming in order (S3: guard flag, 2 alerts, Verma invoice, PayPal check, Notion Paid, Jira task, summary, Hinglish reply); Stop mid-S3 stops the server run after 5 calls and the run is saved as stopped; right rail refreshes after the run (₹69,000 -> ₹81,000). All pages at 1440/390 px, light/dark: zero console errors, zero horizontal overflow.
 - `npm run check` green, `npm run build` green.
 
+### Live connection (25 Sep, after the phase-3 commit)
+
+- **PayPal connected and verified through Swytchcode** (sandbox create, get, delete, list). On the free Developer plan the browser's "Create a new connection" opens the upgrade page, so credentials go through the env: `PAYPAL_CLIENT_ID` + `PAYPAL_CLIENT_SECRET` in `.env.local`, `npm run paypal:token` writes `PAYPAL_API_KEY` (sandbox access token, about 9 h), which Swytchcode reads first (`swy whoami` shows "env var" only in a shell that has it; Bahi loads `.env.local` and passes it to the CLI).
+- **The PayPal sandbox rejects INR invoices** ("Currency Code is not valid"): `.env.local` now has `PAYPAL_CURRENCY=USD` (converted at `DEMO_INR_PER_USD`, the UI still shows rupees).
+- **Fixed a phase-2 bug found with the first real call:** `swytchcode exec` prints every provider answer as `{ data, request, status_code, [error_category, retryable] }` and exits 0 even for HTTP 4xx. `unwrapKernelOutput` assumed the documented `{ success, result }` shape, so live adapters would have parsed the envelope and treated HTTP errors as successes. Now `data` is unwrapped and `status_code >= 400` becomes an ExecError (kind from `error_category`, else the status; message includes PayPal/Google/Notion/Atlassian error details). Tested against real captures `fixtures/recorded/cli/exec-http-200.json` and `exec-http-400.json`.
+- The Developer plan says "No policy features" (allow/deny on Pro, approval workflows on Business). Phase 4 must check early whether local policies still enforce; ask the organisers about a hackathon plan.
+
 ### Decisions
 
 - **Domain tools over raw Swytchcode tools.** The Swytchcode quickstart hands raw endpoint tools to the model. Bahi keeps the same kernel (every call is still a Swytchcode exec with policies, idempotency and audit) but gives the model domain tools, so it never composes PayPal JSON, and code guardrails sit between the model and the money. Each composite tool still shows every underlying Swytchcode call in the timeline.

@@ -1,0 +1,6 @@
+{
+  "_note": "Real capture 25 Sep 2026, swytchcode 2.23.5, PayPal sandbox. exec-http-200",
+  "exitCode": 0,
+  "stdout": "{\"data\":{},\"request\":{\"method\":\"GET\",\"url\":\"https://api-m.sandbox.paypal.com/v2/invoicing/invoices?fields=all\\u0026page=1\\u0026page_size=1\\u0026total_required=false\"},\"status_code\":200}\n",
+  "stderr": ""
+}
