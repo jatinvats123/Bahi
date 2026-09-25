@@ -26,7 +26,7 @@ export function createSlackLive(): SlackAdapter {
     for (let page = 0; page < 5; page++) {
       const r = await liveCall(
         "slackListChannels",
-        { params: { types: "public_channel,private_channel", exclude_archived: true, limit: 200, ...(cursor ? { cursor } : {}) } },
+        { params: { types: "public_channel", exclude_archived: true, limit: 200, ...(cursor ? { cursor } : {}) } }, // Swytchcode-managed Slack app has no groups:read
         SlackChannelsRawSchema,
         { ctx, summary: `#${clean}`, check: slackCheck, what: "Slack channel list" },
       );
