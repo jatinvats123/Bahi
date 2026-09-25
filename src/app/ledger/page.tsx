@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { LedgerTable } from "@/components/ledger/LedgerTable";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { RefreshButton } from "@/components/ui/RefreshButton";
 import { getPublicConfig } from "@/lib/config";
 import { getLedger } from "@/lib/data";
 import { formatDateIST, formatINR, istDateKey } from "@/lib/format";
@@ -41,6 +42,7 @@ export default async function LedgerPage() {
               Settings mein Notion ka status dekho, ya npm run setup:notion chalao. Demo ke liye SWYTCH_MODE=mock rakho.
             </p>
             {ledger.problem ? <p className="num mt-2 text-[12px] break-words text-ink-faint-text">{ledger.problem}</p> : null}
+            <RefreshButton />
           </div>
         ) : (
           <>

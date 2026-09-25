@@ -5,7 +5,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { Wordmark } from "./Wordmark";
 
 /** Desktop sidebar: the bahi cover. Red linen, gold stitch, wordmark. Hidden below md. */
-export function Sidebar({ businessName, mode }: { businessName: string; mode: "live" | "mock" }) {
+export function Sidebar({ businessName, mode, agentMode }: { businessName: string; mode: "live" | "mock"; agentMode: "live" | "replay" }) {
   return (
     <aside className="bahi-cloth fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-w)] flex-col px-6 pt-8 pb-6 md:flex">
       <div>
@@ -23,7 +23,7 @@ export function Sidebar({ businessName, mode }: { businessName: string; mode: "l
       </nav>
 
       <div className="mt-auto flex items-center justify-between gap-2 border-t border-dashed border-cloth-stitch/45 pt-4">
-        <ModeBadge mode={mode} onCloth />
+        <ModeBadge mode={mode} agentMode={agentMode} onCloth />
         <ThemeToggle className="text-cloth-ink-soft hover:bg-cloth-ink/10 hover:text-cloth-ink" />
       </div>
     </aside>

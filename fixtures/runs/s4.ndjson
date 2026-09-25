@@ -1,0 +1,20 @@
+{"runId":"rec_s4","seq":1,"ts":"2026-09-25T20:58:25.021Z","type":"run_started","command":"Kaun late hai? Sabko yaad dilao","inputMode":"text","mode":"live"}
+{"runId":"rec_s4","seq":2,"ts":"2026-09-25T20:58:25.665Z","type":"thinking","text":"Gemini busy hai, backup model (Gemini gemini-3-flash-preview) use kar rahe hain."}
+{"runId":"rec_s4","seq":3,"ts":"2026-09-25T20:58:26.217Z","type":"thinking","text":"Gemini busy hai, backup model (Gemini gemini-3.5-flash-lite) use kar rahe hain."}
+{"runId":"rec_s4","seq":4,"ts":"2026-09-25T20:58:29.728Z","type":"tool_call","callId":"c_8aaea005","integration":"notion","tool":"notion.query.create","inputSummary":"Bahi Ledger"}
+{"runId":"rec_s4","seq":5,"ts":"2026-09-25T20:58:33.799Z","type":"tool_result","callId":"c_8aaea005","ok":true,"summary":"Ledger dekha","ms":4071,"retries":0}
+{"runId":"rec_s4","seq":6,"ts":"2026-09-25T20:58:33.799Z","type":"tool_call","callId":"c_acb2783f","integration":"paypal","tool":"invoices.invoicing.invoices.get","inputSummary":"INV2-DEMO-0002-BAHI-RPLY"}
+{"runId":"rec_s4","seq":7,"ts":"2026-09-25T20:58:33.800Z","type":"tool_call","callId":"c_4bbc2d8e","integration":"paypal","tool":"invoices.invoicing.invoices.get","inputSummary":"INV2-DEMO-0003-BAHI-RPLY"}
+{"runId":"rec_s4","seq":8,"ts":"2026-09-25T20:58:37.880Z","type":"tool_result","callId":"c_acb2783f","ok":true,"summary":"Invoice status dekha","ms":4081,"retries":0}
+{"runId":"rec_s4","seq":9,"ts":"2026-09-25T20:58:38.654Z","type":"tool_result","callId":"c_4bbc2d8e","ok":true,"summary":"Invoice status dekha","ms":4854,"retries":0}
+{"runId":"rec_s4","seq":10,"ts":"2026-09-25T20:58:40.657Z","type":"tool_call","callId":"c_93654327","integration":"slack","tool":"slack.conversations.list.list","inputSummary":"#bahi-ops"}
+{"runId":"rec_s4","seq":11,"ts":"2026-09-25T20:58:40.660Z","type":"tool_call","callId":"c_39f2a834","integration":"gmail","tool":"gmail.user.send.create1","inputSummary":"orders@vermasweets.example: Payment reminder: Navratri gift boxes (₹90,000)"}
+{"runId":"rec_s4","seq":12,"ts":"2026-09-25T20:58:44.654Z","type":"tool_result","callId":"c_93654327","ok":true,"summary":"Slack channels dekhe","ms":3997,"retries":0}
+{"runId":"rec_s4","seq":13,"ts":"2026-09-25T20:58:44.654Z","type":"tool_call","callId":"c_e2c8c2e7","integration":"slack","tool":"slack.chat.postmessage.create","inputSummary":"#bahi-ops: Sent payment reminder to Verma Sweets for overdue invoice INV2-DEMO-0002-BAHI-RPLY (₹90,0..."}
+{"runId":"rec_s4","seq":14,"ts":"2026-09-25T20:58:44.729Z","type":"policy","callId":"c_39f2a834","decision":"allowed","policyId":"email-known-clients-only","message":"Swytchcode: policy ok"}
+{"runId":"rec_s4","seq":15,"ts":"2026-09-25T20:58:44.730Z","type":"tool_result","callId":"c_39f2a834","ok":true,"summary":"Email bheja","ms":4069,"retries":0}
+{"runId":"rec_s4","seq":16,"ts":"2026-09-25T20:58:44.730Z","type":"tool_call","callId":"c_c36de61d","integration":"notion","tool":"notion.page.update","inputSummary":"reminder 2026-09-26"}
+{"runId":"rec_s4","seq":17,"ts":"2026-09-25T20:58:46.518Z","type":"tool_result","callId":"c_c36de61d","ok":true,"summary":"Ledger update kiya","ms":1788,"retries":0}
+{"runId":"rec_s4","seq":18,"ts":"2026-09-25T20:58:48.526Z","type":"tool_result","callId":"c_e2c8c2e7","ok":true,"summary":"Slack par likha","ms":3871,"retries":0}
+{"runId":"rec_s4","seq":19,"ts":"2026-09-25T20:58:49.945Z","type":"speak","text":"Verma Sweets ko payment reminder bhej diya hai."}
+{"runId":"rec_s4","seq":20,"ts":"2026-09-25T20:58:49.945Z","type":"final","summary":"Verma Sweets ₹90,000 ke liye 7 din late hain. Reminder bhej diya hai."}

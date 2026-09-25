@@ -15,12 +15,15 @@ export const metadata: Metadata = { title: "Settings" };
 
 function Row({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
-    <div className="grid gap-1 border-b border-rule/70 px-4 py-3 last:border-b-0 sm:grid-cols-[200px_minmax(0,1fr)] sm:gap-4">
-      <dt className="text-[13px] font-semibold text-ink-soft">{label}</dt>
-      <dd className="min-w-0 text-sm text-ink">
-        {children}
-        {hint ? <p className="mt-0.5 text-[12.5px] text-ink-soft">{hint}</p> : null}
-      </dd>
+    // Container query: in the narrow right column the label stacks above the value.
+    <div className="@container border-b border-rule/70 px-4 py-3 last:border-b-0">
+      <div className="grid gap-1 @md:grid-cols-[180px_minmax(0,1fr)] @md:gap-4">
+        <dt className="text-[13px] font-semibold text-ink-soft">{label}</dt>
+        <dd className="min-w-0 text-sm text-ink [overflow-wrap:anywhere]">
+          {children}
+          {hint ? <p className="mt-0.5 text-[12.5px] text-ink-soft">{hint}</p> : null}
+        </dd>
+      </div>
     </div>
   );
 }

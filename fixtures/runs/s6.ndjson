@@ -1,0 +1,17 @@
+{"runId":"rec_s6","seq":1,"ts":"2026-09-25T20:55:08.752Z","type":"run_started","command":"Aaj ka hisaab batao","inputMode":"text","mode":"live"}
+{"runId":"rec_s6","seq":2,"ts":"2026-09-25T20:55:09.401Z","type":"thinking","text":"Gemini busy hai, backup model (Gemini gemini-3-flash-preview) use kar rahe hain."}
+{"runId":"rec_s6","seq":3,"ts":"2026-09-25T20:55:09.907Z","type":"thinking","text":"Gemini busy hai, backup model (Gemini gemini-3.5-flash-lite) use kar rahe hain."}
+{"runId":"rec_s6","seq":4,"ts":"2026-09-25T20:55:11.347Z","type":"tool_call","callId":"c_f0f30bdd","integration":"notion","tool":"notion.query.create","inputSummary":"Bahi Ledger"}
+{"runId":"rec_s6","seq":5,"ts":"2026-09-25T20:55:15.497Z","type":"tool_result","callId":"c_f0f30bdd","ok":true,"summary":"Ledger dekha","ms":4151,"retries":0}
+{"runId":"rec_s6","seq":6,"ts":"2026-09-25T20:55:15.498Z","type":"tool_call","callId":"c_2a5410a8","integration":"paypal","tool":"invoices.invoicing.invoices.get","inputSummary":"INV2-DEMO-0002-BAHI-RPLY"}
+{"runId":"rec_s6","seq":7,"ts":"2026-09-25T20:55:15.498Z","type":"tool_call","callId":"c_9f6ee66f","integration":"paypal","tool":"invoices.invoicing.invoices.get","inputSummary":"INV2-DEMO-0003-BAHI-RPLY"}
+{"runId":"rec_s6","seq":8,"ts":"2026-09-25T20:55:15.498Z","type":"tool_call","callId":"c_89401840","integration":"paypal","tool":"invoices.invoicing.invoices.get","inputSummary":"INV2-DEMO-0001-BAHI-RPLY"}
+{"runId":"rec_s6","seq":9,"ts":"2026-09-25T20:55:19.649Z","type":"tool_result","callId":"c_89401840","ok":true,"summary":"Invoice status dekha","ms":4150,"retries":0}
+{"runId":"rec_s6","seq":10,"ts":"2026-09-25T20:55:19.700Z","type":"tool_result","callId":"c_9f6ee66f","ok":true,"summary":"Invoice status dekha","ms":4202,"retries":0}
+{"runId":"rec_s6","seq":11,"ts":"2026-09-25T20:55:20.296Z","type":"tool_result","callId":"c_2a5410a8","ok":true,"summary":"Invoice status dekha","ms":4798,"retries":0}
+{"runId":"rec_s6","seq":12,"ts":"2026-09-25T20:55:22.047Z","type":"tool_call","callId":"c_8e69dd0d","integration":"slack","tool":"slack.conversations.list.list","inputSummary":"#bahi-ops"}
+{"runId":"rec_s6","seq":13,"ts":"2026-09-25T20:55:26.403Z","type":"tool_result","callId":"c_8e69dd0d","ok":true,"summary":"Slack channels dekhe","ms":4357,"retries":0}
+{"runId":"rec_s6","seq":14,"ts":"2026-09-25T20:55:26.403Z","type":"tool_call","callId":"c_cafa7aa9","integration":"slack","tool":"slack.chat.postmessage.create","inputSummary":"#bahi-ops: Daily brief for 2026-09-26: To receive: ₹1,85,000 (3 invoices). Overdue: ₹0. Received tod..."}
+{"runId":"rec_s6","seq":15,"ts":"2026-09-25T20:55:30.455Z","type":"tool_result","callId":"c_cafa7aa9","ok":true,"summary":"Slack par likha","ms":4052,"retries":0}
+{"runId":"rec_s6","seq":16,"ts":"2026-09-25T20:55:31.860Z","type":"speak","text":"Aaj ₹1,85,000 milna baaki hai aur overdue kuch nahi hai."}
+{"runId":"rec_s6","seq":17,"ts":"2026-09-25T20:55:31.860Z","type":"final","summary":"Aaj ka hisaab: ₹1,85,000 milna baaki hai (3 invoices). Overdue ₹0 hai, aur aaj kuch payment nahi mila."}

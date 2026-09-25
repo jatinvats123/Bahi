@@ -47,7 +47,7 @@ export interface ToolEntry extends EntryBase {
 }
 
 export type TimelineEntry =
-  | (EntryBase & { kind: "started"; command: string; inputMode: "voice" | "text"; mode: "live" | "mock" })
+  | (EntryBase & { kind: "started"; command: string; inputMode: "voice" | "text"; mode: "live" | "mock"; replay: ReplayInfo | null })
   | (EntryBase & { kind: "intent"; source: "laya" | "llm"; label: string; confidence: number; ms: number })
   | (EntryBase & { kind: "thinking"; text: string })
   | ToolEntry
@@ -55,6 +55,13 @@ export type TimelineEntry =
   | (EntryBase & { kind: "speak"; text: string })
   | (EntryBase & { kind: "final"; summary: string })
   | (EntryBase & { kind: "error"; message: string; recoverable: boolean });
+
+/** Present when the run is a playback of a recorded run (AGENT_MODE=replay). */
+export interface ReplayInfo {
+  scenario: string;
+  recordedAt: string;
+  sourceRunId: string;
+}
 
 /** Everything the approval card shows. Detail fields are null for runs recorded before phase 4. */
 export interface ApprovalInfo {
@@ -88,6 +95,8 @@ export interface RunView {
   command: string | null;
   inputMode: "voice" | "text" | null;
   mode: "live" | "mock" | null;
+  /** Non-null for a recorded run played back: never show it as live. */
+  replay: ReplayInfo | null;
   status: RunStatus | "idle";
   /** Run-level stamp for the header. */
   stamp: StampKind | null;
@@ -122,6 +131,7 @@ export const emptyRunView: RunView = {
   command: null,
   inputMode: null,
   mode: null,
+  replay: null,
   status: "idle",
   stamp: null,
   startedAt: null,
@@ -204,7 +214,8 @@ export function foldRunEvents(input: readonly RunEvent[]): RunView {
         view.inputMode = ev.inputMode;
         view.mode = ev.mode;
         view.startedAt = ev.ts;
-        view.entries.push({ key, seq: ev.seq, ts: ev.ts, kind: "started", command: ev.command, inputMode: ev.inputMode, mode: ev.mode });
+        view.replay = ev.replay ?? null;
+        view.entries.push({ key, seq: ev.seq, ts: ev.ts, kind: "started", command: ev.command, inputMode: ev.inputMode, mode: ev.mode, replay: view.replay });
         break;
       case "intent":
         view.intent = { source: ev.source, label: ev.label, confidence: ev.confidence, ms: ev.ms };

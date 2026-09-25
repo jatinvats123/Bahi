@@ -10,10 +10,17 @@ interface ToastItem {
   tone: ToastTone;
   title: string;
   body?: string;
+  action?: ToastAction;
+}
+
+/** One button on the toast, e.g. "Dobara koshish" to retry what failed. */
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
 }
 
 interface ToastApi {
-  show: (toast: { title: string; body?: string; tone?: ToastTone }) => void;
+  show: (toast: { title: string; body?: string; tone?: ToastTone; action?: ToastAction }) => void;
 }
 
 const ToastContext = createContext<ToastApi | null>(null);
@@ -35,10 +42,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const dismiss = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
 
   const show = useCallback<ToastApi["show"]>(
-    ({ title, body, tone = "info" }) => {
+    ({ title, body, tone = "info", action }) => {
       const id = nextId.current++;
-      setToasts((t) => [...t.slice(-2), { id, title, body, tone }]);
-      setTimeout(() => dismiss(id), 5000);
+      setToasts((t) => [...t.slice(-2), { id, title, body, tone, action }]);
+      // A toast with an action stays longer, so there is time to press it.
+      setTimeout(() => dismiss(id), action ? 12_000 : 5000);
     },
     [dismiss],
   );
@@ -70,6 +78,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-ink">{t.title}</p>
                   {t.body ? <p className="mt-0.5 text-[13px] text-ink-soft">{t.body}</p> : null}
+                  {t.action ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        dismiss(t.id);
+                        t.action?.onClick();
+                      }}
+                      className="mt-2 inline-flex h-8 items-center rounded-bahi border border-rule bg-paper-raised px-3 text-[13px] font-semibold text-ink hover:border-ink-faint"
+                    >
+                      {t.action.label}
+                    </button>
+                  ) : null}
                 </div>
                 <button
                   type="button"

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { parseRunEventLine, type RunEvent } from "@/lib/events";
 import { initialRunState, runReducer } from "@/lib/run-reducer";
+import type { ScenarioId } from "@/lib/scenarios";
 
 /**
  * Starts a run with POST /api/runs and folds the NDJSON event stream into a RunView
@@ -76,7 +77,7 @@ export function useRun(opts: { onFinished?: () => void } = {}) {
   );
 
   const start = useCallback(
-    async (text: string, source: "text" | "voice" = "text") => {
+    async (text: string, source: "text" | "voice" = "text", scenario?: ScenarioId) => {
       controller.current?.abort();
       const ctl = new AbortController();
       controller.current = ctl;
@@ -90,7 +91,7 @@ export function useRun(opts: { onFinished?: () => void } = {}) {
         const res = await fetch("/api/runs", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ text, source }),
+          body: JSON.stringify({ text, source, ...(scenario ? { scenario } : {}) }),
           signal: ctl.signal,
         });
         if (!res.ok || !res.body) {

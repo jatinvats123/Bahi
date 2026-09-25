@@ -18,11 +18,12 @@ import {
   WarningOctagonIcon,
   type Icon,
 } from "@phosphor-icons/react";
-import { motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion, type Variants } from "motion/react";
 import type { ReactNode } from "react";
 import { ApprovalCard } from "@/components/approvals/ApprovalCard";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
+import { CopyId } from "@/components/ui/CopyId";
 import { Stamp } from "@/components/ui/Stamp";
 import type { Integration, RunStatus } from "@/lib/events";
 import { formatDateIST, formatDuration, formatTimeIST } from "@/lib/format";
@@ -54,6 +55,11 @@ const FINAL_VERB: Partial<Record<RunStatus, string>> = {
   expired: "Kaam roka gaya",
   failed: "Kaam adhoora",
 };
+
+/** A PayPal invoice id inside a summary line, for the copy button. */
+function invoiceIdIn(text: string): string | null {
+  return /\bINV2(?:-[A-Z0-9]{4}){4}\b/.exec(text)?.[0] ?? null;
+}
 
 function humanLabel(label: string): string {
   return label.replace(/_/g, " ");
@@ -102,13 +108,21 @@ function RowIcon({ icon: IconCmp, tone = "text-ink-soft" }: { icon: Icon; tone?:
   );
 }
 
+/**
+ * Rows inherit "hidden" -> "show" from the list, so a batch (a reattach, a replay shown in full)
+ * cascades 45 ms apart, while rows that stream in later animate on arrival. Opacity and a 6 px
+ * lift only: nothing below moves, so there is no layout shift beyond the row's own height.
+ */
+const LIST_VARIANTS: Variants = { hidden: {}, show: { transition: { staggerChildren: 0.045 } } };
+const ROW_VARIANTS: Variants = {
+  hidden: { opacity: 0, y: 6 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] } },
+};
+
 function Row({ entry, children, icon, tone, quiet = false }: { entry: TimelineEntry; children: ReactNode; icon: Icon; tone?: string; quiet?: boolean }) {
-  const reduce = useReducedMotion();
   return (
     <motion.li
-      initial={reduce ? false : { opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+      variants={ROW_VARIANTS}
       className={`margin-grid border-b border-rule/60 ${quiet ? "py-2" : "py-3"}`}
     >
       <Margin ts={entry.ts} />
@@ -150,7 +164,7 @@ function ToolChips({ e }: { e: ToolEntry }) {
   return <div className="mt-2 flex flex-wrap gap-1.5">{chips}</div>;
 }
 
-function Entry({ entry, status }: { entry: TimelineEntry; status: RunView["status"] }) {
+function Entry({ entry, status, recorded }: { entry: TimelineEntry; status: RunView["status"]; recorded: boolean }) {
   switch (entry.kind) {
     case "started":
       return (
@@ -158,7 +172,13 @@ function Entry({ entry, status }: { entry: TimelineEntry; status: RunView["statu
           <Verb>Hukum mila</Verb>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             <Chip>{entry.inputMode === "voice" ? "Awaaz se" : "Likh ke"}</Chip>
-            {entry.mode === "mock" ? <Chip tone="pending">Mock run</Chip> : <Chip tone="paid">Live</Chip>}
+            {entry.replay ? (
+              <Chip tone="approval">Recorded run: {entry.replay.scenario}</Chip>
+            ) : entry.mode === "mock" ? (
+              <Chip tone="pending">Mock run</Chip>
+            ) : (
+              <Chip tone="paid">Live</Chip>
+            )}
           </div>
         </Row>
       );
@@ -197,6 +217,7 @@ function Entry({ entry, status }: { entry: TimelineEntry; status: RunView["statu
                 <span className="font-semibold text-ink">{entry.integrationLabel}</span>
                 <span aria-hidden> / </span>
                 {entry.inputSummary}
+                {invoiceIdIn(entry.inputSummary) ? <CopyId value={invoiceIdIn(entry.inputSummary)!} /> : null}
               </Detail>
             </div>
             {entry.stamp ? <Stamp kind={entry.stamp} size="sm" className="mt-1" /> : null}
@@ -217,6 +238,7 @@ function Entry({ entry, status }: { entry: TimelineEntry; status: RunView["statu
                 summary: entry.inputSummary,
                 status: entry.approval.status,
               }}
+              readOnly={recorded}
             />
           ) : null}
           <ToolChips e={entry} />
@@ -273,6 +295,7 @@ export function RunTimeline({
   label?: string;
 }) {
   const last = view.entries.at(-1);
+  const reduce = useReducedMotion();
 
   if (view.status === "idle") {
     return (
@@ -310,7 +333,21 @@ export function RunTimeline({
           <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12.5px] text-ink-soft">
             <span className="font-semibold text-ink">{STATUS_TEXT[view.status]}</span>
             {view.runId ? <span className="num text-[11.5px] text-ink-faint-text">{view.runId}</span> : null}
-            {view.mode === "mock" ? <Chip tone="pending">Mock run</Chip> : null}
+            {view.replay ? (
+              <span
+                data-testid="recorded-badge"
+                className="num inline-flex items-center rounded-[3px] border-[1.5px] border-dashed border-approval px-2 py-0.5 text-[11px] font-semibold tracking-[0.12em] text-approval-ink uppercase"
+              >
+                Recorded run
+              </span>
+            ) : view.mode === "mock" ? (
+              <Chip tone="pending">Mock run</Chip>
+            ) : null}
+            {view.replay ? (
+              <span className="text-[12px] text-ink-soft">
+                Live sandbox run, recorded <span className="num">{formatDateIST(view.replay.recordedAt)}, {formatTimeIST(view.replay.recordedAt)}</span>. Dobara chal raha hai, asli nahi.
+              </span>
+            ) : null}
             {canReplay && !playing ? (
               <button type="button" onClick={onReplay} className="inline-flex items-center gap-1 rounded px-1 font-semibold text-bahi-ink underline-offset-4 hover:underline">
                 <ArrowCounterClockwiseIcon size={14} weight="bold" aria-hidden />
@@ -319,18 +356,24 @@ export function RunTimeline({
             ) : null}
           </div>
           {view.stamp ? (
-            <div className="absolute top-3 right-[var(--gutter)]">
+            <div className="absolute top-3 right-[var(--gutter)]" data-testid="run-stamp">
               <Stamp kind={view.stamp} size="lg" />
             </div>
           ) : null}
         </div>
       </header>
 
-      <ol className="border-t border-ink/70" aria-label="Kaam ke kadam">
+      <motion.ol
+        className="border-t border-ink/70"
+        aria-label="Kaam ke kadam"
+        variants={LIST_VARIANTS}
+        initial={reduce ? false : "hidden"}
+        animate="show"
+      >
         {view.entries.map((entry) => (
-          <Entry key={entry.key} entry={entry} status={view.status} />
+          <Entry key={entry.key} entry={entry} status={view.status} recorded={view.replay !== null} />
         ))}
-      </ol>
+      </motion.ol>
 
       {view.missingSeqs.length > 0 ? (
         <p className="after-margin mt-2 text-[12.5px] text-pending-ink">Kuch kadam abhi pahunche nahi. List adhoori ho sakti hai.</p>

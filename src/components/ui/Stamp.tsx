@@ -49,6 +49,7 @@ export function Stamp({
   return (
     <motion.span
       key={kind}
+      data-stamp={kind}
       className={`stamp ${SIZE[size]} ${COLOR[kind]} ${className}`}
       style={{ rotate: -6 }}
       initial={still ? false : { scale: 1.4, opacity: 0, filter: "blur(1.5px)" }}

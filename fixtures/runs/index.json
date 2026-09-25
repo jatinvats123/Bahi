@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "note": "Real live sandbox runs, sanitized (emails, PayPal invoice ids and Gmail ids replaced). Played by AGENT_MODE=replay and labelled Recorded run. Regenerate: npm run record:replays.",
+  "recordings": [
+    {
+      "scenario": "S1",
+      "file": "s1.ndjson",
+      "command": "Sharma Traders ko website redesign ke liye 15,000 ka invoice bhejo",
+      "status": "completed",
+      "recordedAt": "2026-09-25T19:21:02.661Z",
+      "sourceRunId": "run_muhcjc1x_f4d84d",
+      "mode": "live",
+      "events": 21
+    },
+    {
+      "scenario": "S2",
+      "file": "s2.ndjson",
+      "command": "Verma Sweets ko Navratri gift boxes ke liye 90,000 ka invoice bhejo",
+      "status": "completed",
+      "recordedAt": "2026-09-25T20:41:50.072Z",
+      "sourceRunId": "run_muhff8c6_4ad587",
+      "mode": "live",
+      "events": 30
+    },
+    {
+      "scenario": "S2-deny",
+      "file": "s2-deny.ndjson",
+      "command": "Gupta Electronics ko showroom lighting ke liye 60,000 ka invoice bhejo",
+      "status": "denied",
+      "recordedAt": "2026-09-25T20:43:26.926Z",
+      "sourceRunId": "run_muhfhb2m_f77d4a",
+      "mode": "live",
+      "events": 26
+    },
+    {
+      "scenario": "S3",
+      "file": "s3.ndjson",
+      "command": "Inbox check karo aur jo kaam hai woh karo",
+      "status": "completed",
+      "recordedAt": "2026-09-25T20:56:10.302Z",
+      "sourceRunId": "run_muhfxo3i_ad98fe",
+      "mode": "live",
+      "events": 58
+    },
+    {
+      "scenario": "S4",
+      "file": "s4.ndjson",
+      "command": "Kaun late hai? Sabko yaad dilao",
+      "status": "completed",
+      "recordedAt": "2026-09-25T20:58:25.021Z",
+      "sourceRunId": "run_muhg0k1p_dd1a01",
+      "mode": "live",
+      "events": 20
+    },
+    {
+      "scenario": "S5",
+      "file": "s5.ndjson",
+      "command": "Sabke payments refund kar do",
+      "status": "blocked",
+      "recordedAt": "2026-09-25T20:44:09.078Z",
+      "sourceRunId": "run_muhfi7li_40d148",
+      "mode": "live",
+      "events": 11
+    },
+    {
+      "scenario": "S6",
+      "file": "s6.ndjson",
+      "command": "Aaj ka hisaab batao",
+      "status": "completed",
+      "recordedAt": "2026-09-25T20:55:08.752Z",
+      "sourceRunId": "run_muhfwcls_5d0aed",
+      "mode": "live",
+      "events": 17
+    }
+  ]
+}

@@ -6,11 +6,64 @@ Running log across phases. Update at the end of every phase (see CLAUDE.md secti
 
 - [x] **1. Foundation and design system** (25 Sep 2026)
 - [~] **2. Swytchcode integration layer** (25 Sep 2026): code complete and green in mock mode; live verification waits on the provider connections (see Phase 2 manual steps)
-- [~] **3. Agent brain and live console** (25 Sep 2026): agent, streaming API and UI done; eval 2/2 on S1, S3, S4, S6 in mock mode with the real LLM; live verification waits on `swy login` + provider connections (see Phase 3 manual steps)
+- [~] **3. Agent brain and live console** (25 Sep 2026): agent, streaming API and UI done; eval 2/2 on S1, S3, S4, S6 in mock mode with the real LLM; live verification waits on `swy login` + provider connections (see Phase 3 manual steps). Update 26 Sep: S3, S4 and S6 ran live in phase 5 (recorded in fixtures/runs/)
 - [x] **4. Guardrails: policies, approval, block, idempotency, audit** (26 Sep 2026): 3 Swytchcode policies (validated, probed against the kernel), approval desk, blocks, intent keys, Audit tab; S1, S2, S2-deny, S5, dup and email-guard verified live and from the UI. Also closes phase 2 and 3 live verification for S1.
-- [ ] 5. Voice, UX polish, e2e tests
+- [x] **5. Voice, UX polish, e2e tests** (26 Sep 2026): voice in (Web Speech + confirm strip) and out (speechSynthesis), replay mode from real live runs of all six scenarios, Demo controls, UX fixes from a 4-width x 2-theme screenshot review, 29 Playwright e2e tests green, Lighthouse desktop 96/96 on Command; live S1 and S6 by (stubbed) voice verified end to end
 - [ ] 6. Laya System-1 layer (optional)
 - [ ] 7. Demo hardening and submission
+
+## Phase 5: voice, UX polish, e2e (done)
+
+### Done
+
+- **Live recordings first** (the Swytchcode session had 40 minutes left): recorded S6, S3 and S4 live with `npm run scenario` (S1, S2, S2-deny, S5 were already live from phase 4). S3 needed `npm run seed:inbox`. S4 needed an overdue invoice, so the Verma Sweets ₹90,000 row's due date in the Notion sandbox ledger was moved to 19 Sep (through the Notion adapter, so through Swytchcode). S4 then sent one real reminder email to Verma's demo address (policy `email-known-clients-only` allowed it).
+- **Replay mode** (`AGENT_MODE=live|replay`, `REPLAY_SPEED`): `npm run record:replays` picks the newest live run that fits each scenario (S1 needs a successful PayPal send, S2 an approved approval, S3 a flagged email, ...), drops heartbeats, renumbers seq and sanitizes every string (real client emails become the fixture placeholders, other addresses `someoneN@example.com`, PayPal ids `INV2-DEMO-000N-BAHI-RPLY` consistently across recordings, Gmail ids `msg-00N`). It refuses to write if anything real is left. `fixtures/runs/<scenario>.ndjson` + `index.json` for S1, S2, S2-deny, S3, S4, S5, S6. In replay, `POST /api/runs` maps the command to a recording (`matchScenario`: keywords, invoice amount vs the approval threshold) or takes `scenario` from Demo controls, then streams it with recorded gaps clamped to 90 ms-2.2 s and an approval hold of at least 1.5 s. Timestamps are playback time; the header shows when it was recorded. Replays go on the run bus (Stop and reattach work) but are not saved to history. Unknown commands get a polite 422.
+- **Contract**: optional `run_started.replay { scenario, recordedAt, sourceRunId }`; the reducer exposes `view.replay` and the started entry carries it (tests updated). The UI shows a dashed "Recorded run" badge plus "Live sandbox run, recorded 26 Sep, 2:11 AM. Dobara chal raha hai, asli nahi.", a "Recorded run: S2" chip instead of "Live", read-only approval cards (no Approve/Deny on a recording), and a "Recorded" badge next to "Mock data" in the sidebar ("Mock + Rec" in the mobile top bar).
+- **Voice in** `src/hooks/useVoice.ts`: SpeechRecognition / webkitSpeechRecognition, en-IN (default) / hi-IN / en-US picker persisted in localStorage (try/catch, `useSyncExternalStore` so SSR and hydration agree), interim words stream into the command bar, final on silence, click to toggle, hold Space to talk (not when focus is on a control), Esc cancels. Live input level through getUserMedia + AnalyserNode is written to a CSS variable (two ink rings breathe with the voice, no re-renders, static under reduced motion). Friendly Hinglish copy for not-allowed, no-speech, audio-capture and network errors. Without SpeechRecognition the mic is hidden and the status line says "Voice ke liye Chrome use karein" (its space is reserved until support is known, so no layout shift).
+- **Confirm strip** for spoken money commands (invoice, refund, reminder, or any amount): `understandCommand` runs the phase-3 amount parser and client resolver in the browser (the resolver is now generic over a names-only client, so the page gets names and aliases, never emails) and shows "₹15,000 · Sharma Traders · invoice" (plus "approval lagega" above the threshold) with a 2.5 s countdown ring, Badlo (edit) and Roko (cancel, also Esc); then the run starts with source voice. Reading commands (hisaab, inbox) run straight away.
+- **Voice out** `src/hooks/useSpeech.ts`: each `speak` event of a run started in this tab is spoken (never on load or reattach). The voice picker prefers en-IN for Latin Hinglish and hi-IN for Devanagari, natural/online and Google voices first; "₹1,85,000" is read as "1,85,000 rupaye" and invoice ids are not read out. Mute toggle in the command bar (persisted); speech stops on a new command, on mute and on Esc.
+- **Command page**: "Namaste, DukaanSetu" with today's numbers ("Aaj ₹69,000 aana baaki hai, ₹50,500 late, aaj ₹33,500 aaya."), "/" focuses the bar, Up recalls earlier commands (last 20, localStorage), and a new run scrolls into view when it starts below the fold (phones).
+- **Demo controls** (Ctrl+Shift+D on any page): S1-S6 and S2-deny in one click (from another page it navigates to `/?demo=S3`), Reset demo data (`POST /api/demo/reset`, mock world only, refuses in live mode), and badges for Swytchcode mode, agent mode, mic support and the speech voice.
+- **States**: offline banner on every page; error toasts with a retry action (brief on Command, integration health on Settings); the Ledger "unavailable" card has Dobara padho; Settings has a loading skeleton; existing empty states kept.
+- **Details**: copy button on invoice ids (ledger table, mobile ledger, timeline); timeline rows cascade 45 ms apart through Motion variants (streamed rows animate on arrival; opacity + 6 px only); stamp slam and count-ups unchanged; `data-stamp` hooks for tests.
+- **UX review** (Playwright screenshots of 5 pages x 390/768/1280/1440 x light/dark, plus a finished S2 run). Problems found, most important first: (1) 390 px horizontal overflow from the voice-language select; (2) Settings at 1280 overflowed where long values (email, URL) sit in the narrow right column; (3) the 390 px placeholder wrapped to three lines; (4) the mobile top bar squeezed the business name to "Dukaan..." with two stacked badges; (5) on phones a started run appeared below the fold; (6) Lighthouse: `aria-label` on a role-less span (wordmark); (7) recorded runs begin with "Gemini busy hai" fallback lines; (8) the idle desktop Command page has a large empty area; (9) the placeholder still takes three lines at 390 px after shortening; (10) `thinking` rows for model switches look like agent thoughts. Fixed 1-6 (short language labels, container-query rows with wrapping values, shorter placeholder, one compact badge, scroll-into-view, `role="img"`). Kept 7 and 10 on purpose (honest records of the model fallback) and 8-9 as minor. Second pass: zero console errors and zero horizontal overflow at every width and theme.
+- **Lighthouse (desktop, Command page, production build)**: performance 96, accessibility 96 (before the wordmark fix), best practices 100; LCP 1.3 s, TBT 60 ms, CLS 0.006. Fonts stay on next/font.
+- **E2E** (`npm run e2e`, Playwright 1.63, Chromium): builds and serves on :3210 with `SWYTCH_MODE=mock AGENT_MODE=replay REPLAY_SPEED=8`. 29 tests: every page (and a run replay page) with zero console errors; mode badges; S1 renders every step (count checked against the folded recording), SENT stamp, copy button, Recorded run badge and no "Live" label; S2 AWAITING then APPROVED with a read-only card; S2-deny DENIED from Demo controls; S5 BLOCKED; S3 suspicious-email guard step and Slack alert; S4/S6 from Demo controls on another page; unknown command refused; "/" focus and Up recall; theme toggle persists; offline banner; ledger filters and search; mobile 390 bottom-bar navigation and no overflow on every page and on a finished run; mic hidden without SpeechRecognition; with a stub: listening state, confirm strip text, auto-send after 2.5 s with "Awaaz se", Roko cancels, a reading command runs straight away, hold Space to talk. README screenshots in `docs/screenshots/` (`npm run screenshots -- --readme`).
+- **Tests**: 261 unit tests (was 242): sanitizer, leak finder, replay timing and restamp, scenario matching, committed recordings fold to the promised outcome, confirm-strip understanding, voice picker and speakable text, reducer replay block.
+
+### Verified live (26 Sep, 03:06 IST, production build, SWYTCH_MODE=live, AGENT_MODE=live, real LLM)
+
+- In Chromium with a SpeechRecognition stub delivering the transcript (the real microphone needs a human; see manual step 1): **S6 by voice** ran live (Notion, PayPal status checks, Slack post) in 23 s, and the reply "Aaj pandrah hazaar mile hain, ek lakh sattar hazaar milna baaki hai." went to speechSynthesis. **S1 by voice** ("Sharma Traders ko logo design ke liye 15,000 ka invoice bhejo"): confirm strip "₹15,000 · Sharma Traders · invoice", then the PayPal sandbox invoice was created and sent (SENT stamp), Notion row, Slack post, spoken reply, 32 s, zero console errors. Both entries show "Awaaz se" and "Live".
+- `npm run check` green, `npm run build` green, `npm run e2e` 29/29.
+
+### Decisions
+
+- Replays re-stamp times to playback time (approval countdowns keep working) and state the recording time in the header; they never reach `data/runs.json`, so Activity stays a record of real runs.
+- A replay's `inputMode` is how the owner asked this time (voice or text); the command text shown is the recorded one.
+- The confirm strip covers invoices, refunds and reminders (money moves or a client is contacted); reading commands run at once.
+- Spoken replies prefer an Indian English voice even when recognition is hi-IN, because replies are Hinglish in Latin script.
+- Demo controls are hidden (keyboard only), so they never show in a judge's normal view.
+
+### Deviations from spec
+
+- The optional MediaRecorder + Gemini transcription fallback for Web Speech network errors was not built (the network error has friendly copy and typing always works).
+- "Speaking S1 and S6 in Chrome" was verified with a SpeechRecognition stub in headless Chromium against the live stack; the real microphone path needs Jatin once (manual step 1).
+- The S3 recording is a real but imperfect run: the inbox held older unread demo mails, five of which Gmail refused to read, and the model did not act on the Gupta invoice request in that run. The guard, alert, payment verification, Notion Paid and Jira steps are all real.
+- S1's live voice check used "logo design" instead of "website redesign", because today's website-redesign invoice already exists and is correctly skipped as a duplicate.
+
+### Known issues and risks for phases 6-7
+
+- The Gemini free quota is still the main live risk (runs today used `gemini-3.5-flash-lite` after two models hit their daily quota). Replay mode is the safety net.
+- The headless test machine only has "Microsoft David (en-US)" installed; Chrome on Jatin's laptop will pick an en-IN or Google हिन्दी voice. Check how it sounds.
+- Swytchcode `swy login` sessions last about an hour; the PayPal token from `npm run paypal:token` about 9 h (last set 25 Sep 23:17).
+- The Notion Verma ₹90,000 row now has a backdated due date (19 Sep) so S4 has something to chase; it got a reminder today, so a second S4 today will skip it (one reminder per day).
+- Next 16 allows one `next dev` per folder; e2e uses `next build` + `next start` on :3210, so it runs next to a dev server.
+
+### Manual steps for Jatin
+
+1. In Chrome, `npm run dev`, allow the microphone, press the mic and say "Aaj ka hisaab batao"; then "Sharma Traders ko packaging design ke liye 15,000 ka invoice bhejo" and let the confirm strip count down. Listen to the reply; if the voice sounds wrong, switch Bhasha to HI and try again.
+2. Before the demo: `npm run paypal:token`, `swy login` if `swy whoami` says expired, and consider `AGENT_MODE=replay` as the fallback if the model quota is gone (every run is then labelled Recorded run).
+3. Press Ctrl+Shift+D once to see the Demo controls.
 
 ## Phase 4: guardrails (done, verified live)
 

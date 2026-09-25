@@ -1,0 +1,30 @@
+{"runId":"rec_s2","seq":1,"ts":"2026-09-25T20:41:50.072Z","type":"run_started","command":"Verma Sweets ko Navratri gift boxes ke liye 90,000 ka invoice bhejo","inputMode":"text","mode":"live"}
+{"runId":"rec_s2","seq":2,"ts":"2026-09-25T20:41:52.400Z","type":"thinking","text":"Client pehchana: Verma Sweets"}
+{"runId":"rec_s2","seq":3,"ts":"2026-09-25T20:41:52.828Z","type":"thinking","text":"Gemini busy hai, backup model (Gemini gemini-3-flash-preview) use kar rahe hain."}
+{"runId":"rec_s2","seq":4,"ts":"2026-09-25T20:41:54.720Z","type":"tool_call","callId":"c_186add8e","integration":"notion","tool":"notion.query.create","inputSummary":"intent bahi-cea5409acaa6f794"}
+{"runId":"rec_s2","seq":5,"ts":"2026-09-25T20:41:58.464Z","type":"tool_result","callId":"c_186add8e","ok":true,"summary":"Ledger dekha","ms":3743,"retries":0}
+{"runId":"rec_s2","seq":6,"ts":"2026-09-25T20:41:58.465Z","type":"tool_call","callId":"c_34c55aae","integration":"paypal","tool":"invoices.invoicing.invoices.create","inputSummary":"Verma Sweets, ₹90,000"}
+{"runId":"rec_s2","seq":7,"ts":"2026-09-25T20:41:59.842Z","type":"policy","callId":"c_34c55aae","decision":"approval_required","policyId":"invoice-approval-over-threshold","message":"blocked by policy \"invoice-approval-over-threshold\": Invoice above Rs 50,000 needs the owner's approval before it reaches PayPal."}
+{"runId":"rec_s2","seq":8,"ts":"2026-09-25T20:41:59.843Z","type":"tool_call","callId":"c_d70ea477","integration":"notion","tool":"notion.query.create","inputSummary":"Verma Sweets"}
+{"runId":"rec_s2","seq":9,"ts":"2026-09-25T20:42:03.722Z","type":"tool_result","callId":"c_d70ea477","ok":true,"summary":"Ledger dekha","ms":3879,"retries":0}
+{"runId":"rec_s2","seq":10,"ts":"2026-09-25T20:42:03.722Z","type":"tool_call","callId":"c_67e609a2","integration":"notion","tool":"notion.page.create","inputSummary":"Verma Sweets"}
+{"runId":"rec_s2","seq":11,"ts":"2026-09-25T20:42:07.693Z","type":"tool_result","callId":"c_67e609a2","ok":true,"summary":"Ledger mein likha","ms":3970,"retries":0}
+{"runId":"rec_s2","seq":12,"ts":"2026-09-25T20:42:07.693Z","type":"thinking","text":"₹90,000 approval ki seema (₹50,000) se upar hai. Swytchcode ne PayPal call rok di; owner ki approval ka intezaar."}
+{"runId":"rec_s2","seq":13,"ts":"2026-09-25T20:42:08.763Z","type":"approval","callId":"c_34c55aae","status":"pending","channel":"#approvals","approvalId":"apr_9c9a021e39a0","via":"bahi","policyId":"invoice-approval-over-threshold","client":"Verma Sweets","amountInr":90000,"description":"Navratri gift boxes","explain":"Approve hone par Swytchcode yeh call karega: POST https://api-m.sandbox.paypal.com/v2/invoicing/invoices (PayPal.invoicing_v2@2.0, production mode). Explain mode: koi network call nahi hui.","expiresAt":"2026-09-25T20:47:08.760Z"}
+{"runId":"rec_s2","seq":14,"ts":"2026-09-25T20:42:08.764Z","type":"tool_call","callId":"c_c3532905","integration":"slack","tool":"slack.chat.postmessage.create","inputSummary":"#approvals (approval): Approval chahiye (DukaanSetu): Verma Sweets ke liye ₹90,000 ka invoice (Navratri gift box..."}
+{"runId":"rec_s2","seq":15,"ts":"2026-09-25T20:42:12.772Z","type":"tool_result","callId":"c_c3532905","ok":true,"summary":"Slack par likha","ms":4008,"retries":0}
+{"runId":"rec_s2","seq":16,"ts":"2026-09-25T20:42:21.669Z","type":"approval","callId":"c_34c55aae","status":"approved","channel":"#approvals","by":"Owner (Bahi dashboard)","approvalId":"apr_9c9a021e39a0"}
+{"runId":"rec_s2","seq":17,"ts":"2026-09-25T20:42:21.669Z","type":"tool_call","callId":"c_34c55aae","integration":"paypal","tool":"invoices.invoicing.invoices.create","inputSummary":"Verma Sweets, ₹90,000"}
+{"runId":"rec_s2","seq":18,"ts":"2026-09-25T20:42:26.544Z","type":"policy","callId":"c_34c55aae","decision":"allowed","policyId":"invoice-approval-over-threshold","message":"Swytchcode: policy ok"}
+{"runId":"rec_s2","seq":19,"ts":"2026-09-25T20:42:26.544Z","type":"tool_result","callId":"c_34c55aae","ok":true,"summary":"Invoice banaya","ms":4874,"retries":0}
+{"runId":"rec_s2","seq":20,"ts":"2026-09-25T20:42:26.545Z","type":"tool_call","callId":"c_8a89df9c","integration":"paypal","tool":"invoices.invoicing.send.create","inputSummary":"INV2-DEMO-0002-BAHI-RPLY"}
+{"runId":"rec_s2","seq":21,"ts":"2026-09-25T20:42:31.620Z","type":"tool_result","callId":"c_8a89df9c","ok":true,"summary":"Invoice bheja","ms":5075,"retries":0}
+{"runId":"rec_s2","seq":22,"ts":"2026-09-25T20:42:31.620Z","type":"tool_call","callId":"c_2b461478","integration":"notion","tool":"notion.query.create","inputSummary":"Verma Sweets"}
+{"runId":"rec_s2","seq":23,"ts":"2026-09-25T20:42:35.475Z","type":"tool_result","callId":"c_2b461478","ok":true,"summary":"Ledger dekha","ms":3854,"retries":0}
+{"runId":"rec_s2","seq":24,"ts":"2026-09-25T20:42:35.475Z","type":"tool_call","callId":"c_66fdce08","integration":"notion","tool":"notion.page.update","inputSummary":"Verma Sweets"}
+{"runId":"rec_s2","seq":25,"ts":"2026-09-25T20:42:40.917Z","type":"tool_result","callId":"c_66fdce08","ok":true,"summary":"Ledger update kiya","ms":5442,"retries":0}
+{"runId":"rec_s2","seq":26,"ts":"2026-09-25T20:42:41.276Z","type":"thinking","text":"Gemini busy hai, backup model (Gemini gemini-3.5-flash-lite) use kar rahe hain."}
+{"runId":"rec_s2","seq":27,"ts":"2026-09-25T20:42:42.762Z","type":"tool_call","callId":"c_352fa20d","integration":"slack","tool":"slack.chat.postmessage.create","inputSummary":"#bahi-ops: Sent invoice of ₹90,000 to Verma Sweets for Navratri gift boxes."}
+{"runId":"rec_s2","seq":28,"ts":"2026-09-25T20:42:46.809Z","type":"tool_result","callId":"c_352fa20d","ok":true,"summary":"Slack par likha","ms":4047,"retries":0}
+{"runId":"rec_s2","seq":29,"ts":"2026-09-25T20:42:46.810Z","type":"speak","text":"Verma Sweets ko nabrata gift boxes ke liye nabbe hazaar ka invoice bhej diya hai."}
+{"runId":"rec_s2","seq":30,"ts":"2026-09-25T20:42:46.810Z","type":"final","summary":"Verma Sweets ko Navratri gift boxes ke liye ₹90,000 ka invoice bhej diya hai."}

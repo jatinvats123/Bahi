@@ -11,11 +11,12 @@ import {
   SlackLogoIcon,
   type Icon,
 } from "@phosphor-icons/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 import type { Integration } from "@/lib/events";
 import { formatTimeIST } from "@/lib/format";
 import type { HealthReport, HealthStatus, IntegrationHealth as Check } from "@/lib/health";
@@ -120,19 +121,29 @@ export function IntegrationHealthCard({ mode }: { mode: "live" | "mock" }) {
   const [report, setReport] = useState<HealthReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const toast = useToast();
+  const retry = useRef<() => void>(() => undefined);
 
-  const load = useCallback(async (fresh: boolean) => {
-    setLoading(true);
-    setFailed(false);
-    try {
-      const res = await fetch(`/api/health${fresh ? "?fresh=1" : ""}`, { cache: "no-store" });
-      setReport((await res.json()) as HealthReport);
-    } catch {
-      setFailed(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = useCallback(
+    async (fresh: boolean): Promise<void> => {
+      setLoading(true);
+      setFailed(false);
+      try {
+        const res = await fetch(`/api/health${fresh ? "?fresh=1" : ""}`, { cache: "no-store" });
+        setReport((await res.json()) as HealthReport);
+      } catch {
+        setFailed(true);
+        toast.show({ tone: "error", title: "Integrations jaanch nahi paaye", body: "Server tak pahunch nahi paaye.", action: { label: "Dobara jaanchen", onClick: () => retry.current() } });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [toast],
+  );
+
+  useEffect(() => {
+    retry.current = () => void load(true);
+  }, [load]);
 
   useEffect(() => {
     // Initial check on mount; the fetch resolves asynchronously.

@@ -218,3 +218,16 @@ describe("approval card transitions (phase 4)", () => {
     expect(tool(s, "n1").result?.tags).toEqual(["idempotent"]);
   });
 });
+
+describe("run-reducer: recorded runs (replay)", () => {
+  it("carries the replay block to the view and the started entry; plain runs have none", () => {
+    const base = events("s1-invoice");
+    const first = base[0]!;
+    if (first.type !== "run_started") throw new Error("script must start with run_started");
+    const replay = { scenario: "S1", recordedAt: "2026-09-25T19:21:02.661Z", sourceRunId: "run_muhcjc1x_f4d84d" };
+    const v = foldRunEvents([{ ...first, replay }, ...base.slice(1)]);
+    expect(v.replay).toEqual(replay);
+    expect(v.entries[0]).toMatchObject({ kind: "started", replay });
+    expect(foldRunEvents(base).replay).toBeNull();
+  });
+});

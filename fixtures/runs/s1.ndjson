@@ -1,0 +1,21 @@
+{"runId":"rec_s1","seq":1,"ts":"2026-09-25T19:21:02.661Z","type":"run_started","command":"Sharma Traders ko website redesign ke liye 15,000 ka invoice bhejo","inputMode":"text","mode":"live"}
+{"runId":"rec_s1","seq":2,"ts":"2026-09-25T19:21:03.374Z","type":"thinking","text":"Gemini busy hai, backup model (Gemini gemini-3-flash-preview) use kar rahe hain."}
+{"runId":"rec_s1","seq":3,"ts":"2026-09-25T19:21:03.983Z","type":"thinking","text":"Gemini busy hai, backup model (Gemini gemini-3.5-flash-lite) use kar rahe hain."}
+{"runId":"rec_s1","seq":4,"ts":"2026-09-25T19:21:05.415Z","type":"thinking","text":"Client pehchana: Sharma Traders"}
+{"runId":"rec_s1","seq":5,"ts":"2026-09-25T19:21:07.010Z","type":"tool_call","callId":"c_7273ea95","integration":"notion","tool":"notion.query.create","inputSummary":"intent bahi-2edbd7248855b2f0"}
+{"runId":"rec_s1","seq":6,"ts":"2026-09-25T19:21:09.059Z","type":"tool_result","callId":"c_7273ea95","ok":true,"summary":"Ledger dekha","ms":2048,"retries":0}
+{"runId":"rec_s1","seq":7,"ts":"2026-09-25T19:21:09.060Z","type":"tool_call","callId":"c_ba5681b0","integration":"paypal","tool":"invoices.invoicing.invoices.create","inputSummary":"Sharma Traders, ₹15,000"}
+{"runId":"rec_s1","seq":8,"ts":"2026-09-25T19:21:13.550Z","type":"policy","callId":"c_ba5681b0","decision":"allowed","policyId":"invoice-approval-over-threshold","message":"Swytchcode: policy ok"}
+{"runId":"rec_s1","seq":9,"ts":"2026-09-25T19:21:13.550Z","type":"tool_result","callId":"c_ba5681b0","ok":true,"summary":"Invoice banaya","ms":4490,"retries":0}
+{"runId":"rec_s1","seq":10,"ts":"2026-09-25T19:21:13.550Z","type":"tool_call","callId":"c_a7003c45","integration":"paypal","tool":"invoices.invoicing.send.create","inputSummary":"INV2-DEMO-0001-BAHI-RPLY"}
+{"runId":"rec_s1","seq":11,"ts":"2026-09-25T19:21:16.108Z","type":"tool_result","callId":"c_a7003c45","ok":true,"summary":"Invoice bheja","ms":2558,"retries":0}
+{"runId":"rec_s1","seq":12,"ts":"2026-09-25T19:21:16.108Z","type":"tool_call","callId":"c_5b2f46ef","integration":"notion","tool":"notion.query.create","inputSummary":"Sharma Traders"}
+{"runId":"rec_s1","seq":13,"ts":"2026-09-25T19:21:17.998Z","type":"tool_result","callId":"c_5b2f46ef","ok":true,"summary":"Ledger dekha","ms":1890,"retries":0}
+{"runId":"rec_s1","seq":14,"ts":"2026-09-25T19:21:17.999Z","type":"tool_call","callId":"c_9decd48f","integration":"notion","tool":"notion.page.update","inputSummary":"Sharma Traders"}
+{"runId":"rec_s1","seq":15,"ts":"2026-09-25T19:21:19.709Z","type":"tool_result","callId":"c_9decd48f","ok":true,"summary":"Ledger update kiya","ms":1710,"retries":0}
+{"runId":"rec_s1","seq":16,"ts":"2026-09-25T19:21:21.009Z","type":"tool_call","callId":"c_24e7b413","integration":"slack","tool":"slack.conversations.list.list","inputSummary":"#bahi-ops"}
+{"runId":"rec_s1","seq":17,"ts":"2026-09-25T19:21:23.078Z","type":"tool_result","callId":"c_24e7b413","ok":true,"summary":"Slack channels dekhe","ms":2069,"retries":0}
+{"runId":"rec_s1","seq":18,"ts":"2026-09-25T19:21:23.078Z","type":"tool_call","callId":"c_29b40097","integration":"slack","tool":"slack.chat.postmessage.create","inputSummary":"#bahi-ops: Created and sent invoice of ₹15,000 to Sharma Traders for website redesign."}
+{"runId":"rec_s1","seq":19,"ts":"2026-09-25T19:21:24.783Z","type":"tool_result","callId":"c_29b40097","ok":true,"summary":"Slack par likha","ms":1705,"retries":0}
+{"runId":"rec_s1","seq":20,"ts":"2026-09-25T19:21:26.674Z","type":"speak","text":"Sharma Traders ko ₹15,000 ka invoice bhej diya gaya hai."}
+{"runId":"rec_s1","seq":21,"ts":"2026-09-25T19:21:26.674Z","type":"final","summary":"Sharma Traders ko website redesign ke liye ₹15,000 ka invoice bhej diya hai. Ledger mein record ho gaya hai."}

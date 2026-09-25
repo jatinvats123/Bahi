@@ -15,7 +15,7 @@ export function BottomBar() {
   );
 }
 
-export function MobileTopBar({ businessName, mode }: { businessName: string; mode: "live" | "mock" }) {
+export function MobileTopBar({ businessName, mode, agentMode }: { businessName: string; mode: "live" | "mock"; agentMode: "live" | "replay" }) {
   return (
     <header className="bahi-cloth flex h-14 items-center justify-between gap-3 px-4 md:hidden [&::after]:inset-[5px]">
       <div className="flex min-w-0 items-baseline gap-3">
@@ -23,7 +23,7 @@ export function MobileTopBar({ businessName, mode }: { businessName: string; mod
         <span className="truncate text-[12.5px] text-cloth-ink-soft">{businessName}</span>
       </div>
       <div className="flex items-center gap-1">
-        <ModeBadge mode={mode} onCloth />
+        <ModeBadge mode={mode} agentMode={agentMode} onCloth compact />
         <ThemeToggle className="text-cloth-ink-soft hover:bg-cloth-ink/10 hover:text-cloth-ink" />
       </div>
     </header>

@@ -51,6 +51,7 @@ export function RightRail({
   onDecided,
   approvalThresholdInr,
   approvalsChannel,
+  pendingReadOnly = false,
 }: {
   brief: BriefState;
   onRetry: () => void;
@@ -62,6 +63,8 @@ export function RightRail({
   onDecided: () => void;
   approvalThresholdInr: number;
   approvalsChannel: string;
+  /** The current run is a recording: its approvals cannot be decided here. */
+  pendingReadOnly?: boolean;
 }) {
   const reduce = useReducedMotion();
   // The current run's pending approvals (live, from the stream) win over the polled copies.
@@ -120,7 +123,7 @@ export function RightRail({
                 transition={{ duration: 0.18, ease: "easeOut" }}
                 className="px-3 py-2.5"
               >
-                <ApprovalCard data={c} compact onDecided={onDecided} />
+                <ApprovalCard data={c} compact onDecided={onDecided} readOnly={pendingReadOnly && liveIds.has(c.approvalId)} />
               </motion.div>
             ))}
           </AnimatePresence>

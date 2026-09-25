@@ -7,10 +7,13 @@ import type { Client } from "../ledger";
  * Pure module, unit tested.
  */
 
-export type ClientResolution =
-  | { status: "matched"; client: Client; score: number; via: string }
-  | { status: "ambiguous"; candidates: { client: Client; score: number }[] }
-  | { status: "not_found"; candidates: { client: Client; score: number }[] };
+/** What resolving needs: names only, so the browser can resolve without client emails. */
+export type ClientName = Pick<Client, "id" | "name" | "aliases" | "contact">;
+
+export type ClientResolution<C extends ClientName = Client> =
+  | { status: "matched"; client: C; score: number; via: string }
+  | { status: "ambiguous"; candidates: { client: C; score: number }[] }
+  | { status: "not_found"; candidates: { client: C; score: number }[] };
 
 /** Honorifics and Hinglish particles that are never part of a client name. */
 const STOP = new Set([
@@ -65,7 +68,7 @@ function wordScore(a: string, b: string): number {
   return s >= 0.7 ? s : 0;
 }
 
-function scoreClient(query: string[], client: Client): { score: number; via: string } {
+function scoreClient(query: string[], client: ClientName): { score: number; via: string } {
   let best = { score: 0, via: "" };
   for (const name of [client.name, ...client.aliases, client.contact]) {
     const nameTokens = tokens(name);
@@ -90,7 +93,7 @@ function scoreClient(query: string[], client: Client): { score: number; via: str
 const MATCH = 0.8;
 const CANDIDATE = 0.55;
 
-export function resolveClient(clients: readonly Client[], spoken: string): ClientResolution {
+export function resolveClient<C extends ClientName = Client>(clients: readonly C[], spoken: string): ClientResolution<C> {
   const query = tokens(spoken);
   if (query.length === 0) return { status: "not_found", candidates: [] };
 

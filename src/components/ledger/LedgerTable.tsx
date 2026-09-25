@@ -3,6 +3,7 @@
 import { ArrowSquareOutIcon, KanbanIcon, MagnifyingGlassIcon, PaypalLogoIcon, XIcon } from "@phosphor-icons/react";
 import { useDeferredValue, useState } from "react";
 import { Chip, ChipButton, type ChipTone } from "@/components/ui/Chip";
+import { CopyId } from "@/components/ui/CopyId";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
 import { formatDateIST, formatINR } from "@/lib/format";
 import { INVOICE_STATUS_LABEL, type Invoice, type InvoiceStatus } from "@/lib/ledger";
@@ -183,7 +184,10 @@ export function LedgerTable({ invoices, today, jiraBaseUrl = null }: { invoices:
                 {rows.map((inv) => (
                   <TR key={inv.id} className="hover:bg-paper/60">
                     <TD className="pl-4">
-                      <span className="num text-[12.5px] text-ink">{inv.id}</span>
+                      <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                        <span className="num text-[12.5px] text-ink">{inv.id}</span>
+                        <CopyId value={inv.id} />
+                      </span>
                     </TD>
                     <TD>
                       <p className="font-semibold text-ink">{inv.clientName}</p>
@@ -229,7 +233,10 @@ export function LedgerTable({ invoices, today, jiraBaseUrl = null }: { invoices:
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12.5px]">
                   <Chip tone={STATUS_TONE[inv.status]}>{INVOICE_STATUS_LABEL[inv.status]}</Chip>
                   <DueCell inv={inv} today={today} />
-                  <span className="num text-[11.5px] text-ink-faint-text">{inv.id}</span>
+                  <span className="inline-flex items-center gap-0.5">
+                    <span className="num text-[11.5px] text-ink-faint-text">{inv.id}</span>
+                    <CopyId value={inv.id} />
+                  </span>
                 </div>
                 {inv.payUrl || inv.jiraKey ? (
                   <div className="mt-2">

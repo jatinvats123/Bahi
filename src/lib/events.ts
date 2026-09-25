@@ -37,6 +37,21 @@ export const RunStartedEventSchema = z.object({
   command: z.string(),
   inputMode: z.enum(["voice", "text"]),
   mode: z.enum(["live", "mock"]),
+  /**
+   * Set only when the server plays back a recorded run (AGENT_MODE=replay). `mode` is the mode
+   * the run was recorded in; the UI must label the run "Recorded run", never as live.
+   * Optional (added in phase 5), so older runs still parse.
+   */
+  replay: z
+    .object({
+      /** Scenario id of the recording, e.g. "S1" or "S2-deny". */
+      scenario: z.string().min(1),
+      /** When the original run started. */
+      recordedAt: z.iso.datetime({ offset: true }),
+      /** runId of the original live run. */
+      sourceRunId: z.string().min(1),
+    })
+    .optional(),
 });
 
 export const IntentEventSchema = z.object({

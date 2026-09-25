@@ -8,6 +8,8 @@ import { getEnv } from "./env";
  */
 export interface PublicConfig {
   mode: "live" | "mock";
+  /** replay = runs are recorded live runs played back (fixtures/runs), labelled as such. */
+  agentMode: "live" | "replay";
   businessName: string;
   businessEmail: string | null;
   approvalThresholdInr: number;
@@ -28,6 +30,7 @@ export function getPublicConfig(): PublicConfig {
   const env = getEnv();
   return {
     mode: env.SWYTCH_MODE,
+    agentMode: env.AGENT_MODE,
     businessName: env.BUSINESS_NAME,
     businessEmail: env.BUSINESS_EMAIL ?? null,
     approvalThresholdInr: env.APPROVAL_THRESHOLD_INR,

@@ -318,6 +318,29 @@
   }
 }
 
+/* Voice confirm strip: the ring empties over the countdown. --ring-c is the circumference. */
+@keyframes confirm-ring {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: var(--ring-c);
+  }
+}
+
+/* Live mic level: ink rings breathe with --mic-level (0..1), set by useVoice without re-rendering. */
+.mic-level-ring {
+  transform: scale(calc(1 + var(--mic-level, 0) * 0.55));
+  opacity: calc(0.18 + var(--mic-level, 0) * 0.7);
+  transition:
+    transform 90ms linear,
+    opacity 90ms linear;
+}
+.mic-level-ring.outer {
+  transform: scale(calc(1.08 + var(--mic-level, 0) * 0.95));
+  opacity: calc(0.08 + var(--mic-level, 0) * 0.45);
+}
+
 @keyframes wave-bar {
   0%,
   100% {
@@ -336,5 +359,10 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+  /* The mic level stays visible as ink density, without movement. */
+  .mic-level-ring,
+  .mic-level-ring.outer {
+    transform: none;
   }
 }

@@ -40,6 +40,14 @@ export const EnvSchema = z
     /** Comma-separated model ids, tried in order. */
     GROQ_MODEL: optionalString,
 
+    /**
+     * live (default): the agent runs for real (model + SWYTCH_MODE adapters).
+     * replay: POST /api/runs plays a recorded live run from fixtures/runs/ (demo safety net, e2e).
+     */
+    AGENT_MODE: z.preprocess(blankToUndefined, z.enum(["live", "replay"], { error: 'must be "live" or "replay"' }).default("live")),
+    /** Replay playback speed (1 = recorded pace with long waits trimmed; e2e uses more). */
+    REPLAY_SPEED: z.preprocess(blankToUndefined, z.coerce.number({ error: "must be a number like 1" }).min(0.25).max(50).default(1)),
+
     SWYTCH_MODE: z.preprocess(blankToUndefined, z.enum(["live", "mock"], { error: 'must be "live" or "mock"' }).default("mock")),
     /** cli = async spawn of the native swytchcode binary (default). sdk = @swytchcode/runtime exec() in a worker thread. */
     SWYTCH_TRANSPORT: z.preprocess(blankToUndefined, z.enum(["cli", "sdk"], { error: 'must be "cli" or "sdk"' }).default("cli")),

@@ -46,14 +46,25 @@ function useCountdown(until: string | null, active: boolean): string | null {
  * or EXPIRED slams in. Approve / deny buttons act on Bahi's approval desk
  * (POST /api/approvals/:id); the waiting run picks the decision up within a second.
  */
-export function ApprovalCard({ data, compact = false, onDecided }: { data: ApprovalCardData; compact?: boolean; onDecided?: () => void }) {
+export function ApprovalCard({
+  data,
+  compact = false,
+  onDecided,
+  readOnly = false,
+}: {
+  data: ApprovalCardData;
+  compact?: boolean;
+  onDecided?: () => void;
+  /** A recorded run: the decision comes from the recording, so no buttons. */
+  readOnly?: boolean;
+}) {
   const [busy, setBusy] = useState<"approve" | "deny" | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [localStatus, setLocalStatus] = useState<ApprovalStatus | null>(null);
   const status = data.status !== "pending" ? data.status : (localStatus ?? "pending");
   const pending = status === "pending";
   const countdown = useCountdown(data.expiresAt, pending);
-  const canDecide = pending && data.via !== "swytchcode" && Boolean(data.approvalId);
+  const canDecide = pending && !readOnly && data.via !== "swytchcode" && Boolean(data.approvalId);
 
   async function decide(decision: "approve" | "deny") {
     if (!data.approvalId) return;
@@ -106,7 +117,9 @@ export function ApprovalCard({ data, compact = false, onDecided }: { data: Appro
       {data.explain && !compact ? <p className="mt-2.5 text-[12.5px] leading-relaxed text-ink-soft">{data.explain}</p> : null}
 
       {pending ? (
-        data.via === "swytchcode" ? (
+        readOnly ? (
+          <p className="mt-3 text-[13px] text-pending-ink">Recorded run: owner ka faisla recording se aayega.</p>
+        ) : data.via === "swytchcode" ? (
           <p className="mt-3 text-[13px] font-semibold text-pending-ink">Slack pe approve karein ({data.channel}).</p>
         ) : canDecide ? (
           <div className="mt-3">

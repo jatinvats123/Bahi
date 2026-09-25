@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, IBM_Plex_Mono, Manrope, Tiro_Devanagari_Hindi } from "next/font/google";
 import { connection } from "next/server";
 import { BottomBar, MobileTopBar } from "@/components/shell/BottomBar";
+import { DemoControls } from "@/components/shell/DemoControls";
+import { OfflineBanner } from "@/components/shell/OfflineBanner";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { THEME_INIT_SCRIPT } from "@/components/shell/theme-script";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -64,14 +66,16 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           Seedha kaam par jao
         </a>
         <ToastProvider>
-          <Sidebar businessName={config.businessName} mode={config.mode} />
+          <Sidebar businessName={config.businessName} mode={config.mode} agentMode={config.agentMode} />
           <div className="min-h-[100dvh] md:pl-[var(--sidebar-w)]">
-            <MobileTopBar businessName={config.businessName} mode={config.mode} />
+            <MobileTopBar businessName={config.businessName} mode={config.mode} agentMode={config.agentMode} />
+            <OfflineBanner />
             <main id="main" className="ledger-paper min-h-[100dvh] pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-0">
               {children}
             </main>
           </div>
           <BottomBar />
+          <DemoControls mode={config.mode} agentMode={config.agentMode} modelReady={config.models.gemini.configured || config.models.groq.configured} />
         </ToastProvider>
       </body>
     </html>
