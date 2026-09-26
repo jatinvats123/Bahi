@@ -202,6 +202,10 @@ export function createNotionMock(): NotionAdapter {
       }),
     markPaid: (pageId, ctx, paidOn = istDateKey(new Date())) => mockCall("notionUpdatePage", ctx, "Paid", () => update(pageId, { status: "Paid", paidOn })),
     setLastReminder: (pageId, date, ctx) => mockCall("notionUpdatePage", ctx, `reminder ${date}`, () => update(pageId, { lastReminder: date })),
+    archiveRow: (pageId, ctx) =>
+      mockCall("notionUpdatePage", ctx, "archive", () =>
+        mockWorld().ledger.delete(pageId) ? success({ pageId }) : failure<{ pageId: string }>({ kind: "not_found", message: `Notion: page ${pageId} not found`, httpStatus: 404 }),
+      ),
   };
 }
 
@@ -221,5 +225,22 @@ export function createJiraMock(): JiraAdapter {
         return success(hit ? { id: hit.id, key: hit.key, url: hit.url, summary: hit.summary, status: hit.status } : null);
       }),
     getProject: (ctx) => mockCall("jiraGetProject", ctx, getEnv().JIRA_PROJECT_KEY, () => success({ key: getEnv().JIRA_PROJECT_KEY, name: "Bahi deliveries (mock)", id: "10000" })),
+    listBahiTasks: (ctx) =>
+      mockCall("jiraSearch", ctx, "label bahi", () =>
+        success(
+          mockWorld()
+            .jira.filter((i) => i.labels.includes("bahi"))
+            .reverse()
+            .map((i) => ({ id: i.id, key: i.key, url: i.url, summary: i.summary, status: i.status })),
+        ),
+      ),
+    deleteTask: (key, ctx) =>
+      mockCall("jiraDeleteIssue", ctx, key, () => {
+        const w = mockWorld();
+        const i = w.jira.findIndex((t) => t.key === key);
+        if (i < 0) return failure<{ key: string }>({ kind: "not_found", message: `Jira: ${key} not found`, httpStatus: 404 });
+        w.jira.splice(i, 1);
+        return success({ key });
+      }),
   };
 }

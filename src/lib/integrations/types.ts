@@ -52,6 +52,8 @@ export interface CreateInvoiceInput {
   amountInr: number;
   /** IST date key; defaults to 15 days from today. */
   dueDate?: string;
+  /** IST date key for the invoice date; defaults to today (demo seeding backdates it). */
+  issueDate?: string;
   /** Bahi's intent key; stored in the invoice reference for idempotency checks. */
   intentKey?: string;
   note?: string;
@@ -216,6 +218,8 @@ export interface NotionAdapter {
   /** Status Paid and "Paid on" = paidOn (IST date key, default today). */
   markPaid(pageId: string, ctx?: CallCtx, paidOn?: string): Promise<Outcome<LedgerRow>>;
   setLastReminder(pageId: string, date: string, ctx?: CallCtx): Promise<Outcome<LedgerRow>>;
+  /** Move a ledger row to the Notion trash (demo reset only; restorable from Notion). */
+  archiveRow(pageId: string, ctx?: CallCtx): Promise<Outcome<{ pageId: string }>>;
 }
 
 // ---------------------------------------------------------------- Jira
@@ -234,6 +238,10 @@ export interface JiraAdapter {
   createDeliveryTask(input: DeliveryTaskInput, ctx?: CallCtx): Promise<Outcome<JiraIssue>>;
   findTaskByInvoiceId(invoiceId: string, ctx?: CallCtx): Promise<Outcome<JiraIssue | null>>;
   getProject(ctx?: CallCtx): Promise<Outcome<{ key: string; name: string; id: string }>>;
+  /** Tasks Bahi created (label "bahi") in the project, newest first, up to 100 (demo reset). */
+  listBahiTasks(ctx?: CallCtx): Promise<Outcome<JiraIssue[]>>;
+  /** Delete one of Bahi's tasks (demo reset only). */
+  deleteTask(key: string, ctx?: CallCtx): Promise<Outcome<{ key: string }>>;
 }
 
 // ---------------------------------------------------------------- all

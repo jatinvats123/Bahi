@@ -24,7 +24,8 @@
     "approve": "node --conditions=react-server --import tsx scripts/approve.ts",
     "record:replays": "node --conditions=react-server --import tsx scripts/record-replays.ts",
     "e2e": "playwright test",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs",
+    "demo:reset": "node --conditions=react-server --import tsx scripts/demo-reset.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.80",

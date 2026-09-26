@@ -19,7 +19,6 @@ export interface PublicConfig {
   jiraProjectKey: string;
   /** Jira Cloud site for "browse" links (not a secret). */
   jiraBaseUrl: string | null;
-  laya: { enabled: boolean; url: string };
   /** model: the effective comma-separated chain (env value or the default). */
   models: { gemini: { configured: boolean; backupKey: boolean; model: string }; groq: { configured: boolean; model: string } };
   notion: { ledgerConfigured: boolean };
@@ -39,7 +38,6 @@ export function getPublicConfig(): PublicConfig {
     slackApprovalsChannel: env.SLACK_APPROVALS_CHANNEL,
     jiraProjectKey: env.JIRA_PROJECT_KEY,
     jiraBaseUrl: env.JIRA_BASE_URL ?? null,
-    laya: { enabled: env.LAYA_ENABLED, url: env.LAYA_URL },
     models: {
       gemini: { configured: Boolean(env.GEMINI_API_KEY), backupKey: Boolean(env.GEMINI_API_KEY_BACKUP), model: env.GEMINI_MODEL ?? DEFAULT_GEMINI_MODELS },
       groq: { configured: Boolean(env.GROQ_API_KEY), model: env.GROQ_MODEL ?? DEFAULT_GROQ_MODELS },

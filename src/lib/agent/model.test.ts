@@ -100,6 +100,15 @@ describe("createFallbackModel", () => {
     expect(switches[0]?.reason).toBe("timeout");
   });
 
+  it("moves on even when a stalled model ignores the abort signal", async () => {
+    const gemini = candidate("gemini", () => new Promise(() => undefined));
+    const groq = candidate("groq", async () => ok("from groq"));
+    const switches: SwitchInfo[] = [];
+    const model = createFallbackModel([gemini, groq], { stepTimeoutMs: 30, onSwitch: (s) => switches.push(s) });
+    expect((await generateText({ model, prompt: "hi", maxRetries: 0 })).text).toBe("from groq");
+    expect(switches[0]?.reason).toBe("timeout");
+  });
+
   it("stays on the fallback for later steps of the same run", async () => {
     let geminiCalls = 0;
     const gemini = candidate("gemini", async () => {

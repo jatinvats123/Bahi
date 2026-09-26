@@ -21,7 +21,7 @@ export function invoiceCreateBody(input: CreateInvoiceInput, opts: InvoiceBodyOp
   return {
     detail: {
       currency_code: opts.cfg.currency,
-      invoice_date: istDateKey(today),
+      invoice_date: input.issueDate ?? istDateKey(today),
       payment_term: { term_type: "DUE_ON_DATE_SPECIFIED", due_date: input.dueDate ?? istDateKey(new Date(today.getTime() + 15 * DAY_MS)) },
       ...(input.intentKey ? { reference: input.intentKey } : {}),
       note: input.note ?? `${opts.businessName} ki taraf se. Shukriya!`,

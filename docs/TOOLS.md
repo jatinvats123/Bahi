@@ -66,6 +66,7 @@ and query parameters; header inputs such as `Notion-Version` (default `2025-09-0
 | Search issues (JQL) | `jira.api.jql.create` | `POST /rest/api/3/search/jql` | body (expand, fields, fieldsByKeys, jql, maxResults, nextPageToken, ...) | Uses the current POST /rest/api/3/search/jql. The older `jira.api.search.create1` (/rest/api/3/search) is retired by Atlassian. |
 | Get project | `jira.api.project.get2` | `GET /rest/api/3/project/{projectIdOrKey}` | `projectIdOrKey` (path) | `project.get2` is GET /project/{projectIdOrKey}; `project.get` / `get1` are unrelated field-context endpoints. |
 | Current user (account check) | `jira.api.myself.list` | `GET /rest/api/3/myself` | none |  |
+| Delete issue (demo reset: Bahi tasks only) (writes) | `jira.api.issue.delete2` | `DELETE /rest/api/3/issue/{issueIdOrKey}` | `issueIdOrKey` (path) |  |
 
 ## Project-level quirks (swytchcode 2.23.5)
 

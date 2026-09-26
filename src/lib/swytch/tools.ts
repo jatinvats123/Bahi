@@ -69,6 +69,8 @@ export const TOOLS = {
   jiraSearch: t("jira.api.jql.create", "jira", "Jira mein dhoondh raha hoon", "Jira mein dhoondha"),
   jiraGetProject: t("jira.api.project.get2", "jira", "Jira project dekh raha hoon", "Jira project dekha"),
   jiraMyself: t("jira.api.myself.list", "jira", "Jira account dekh raha hoon", "Jira account dekha"),
+  // Demo reset only (npm run demo:reset): removes Bahi's own delivery tasks (label "bahi").
+  jiraDeleteIssue: t("jira.api.issue.delete2", "jira", "Jira task hata raha hoon", "Jira task hataya", { mutating: true }),
 } as const satisfies Record<string, ToolDef>;
 
 export type ToolKey = keyof typeof TOOLS;

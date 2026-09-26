@@ -15,15 +15,6 @@ const inr = (fallback: number) =>
     blankToUndefined,
     z.coerce.number({ error: "must be a whole rupee amount, e.g. 50000" }).int("must be a whole rupee amount").positive("must be greater than 0").default(fallback),
   );
-const bool = (fallback: boolean) =>
-  z.preprocess(
-    (v) => {
-      const s = blankToUndefined(v);
-      if (typeof s !== "string") return s;
-      return ["1", "true", "yes", "on"].includes(s.toLowerCase()) ? true : ["0", "false", "no", "off"].includes(s.toLowerCase()) ? false : s;
-    },
-    z.boolean({ error: "must be true or false" }).default(fallback),
-  );
 const channel = (fallback: string) =>
   z.preprocess(
     (v) => (typeof v === "string" ? v.trim().replace(/^#/, "") : v),
@@ -67,8 +58,6 @@ export const EnvSchema = z
      */
     APPROVAL_MODE: z.preprocess(blankToUndefined, z.enum(["gate", "swytchcode"], { error: 'must be "gate" or "swytchcode"' }).default("gate")),
 
-    LAYA_ENABLED: bool(false),
-    LAYA_URL: z.preprocess(blankToUndefined, z.url({ error: "must be a URL like http://127.0.0.1:8000" }).default("http://127.0.0.1:8000")),
 
     NOTION_PARENT_PAGE_ID: optionalString,
     NOTION_LEDGER_DATABASE_ID: optionalString,

@@ -32,7 +32,7 @@ Every external action runs through Swytchcode, so money never moves without poli
 - Execution: EVERY third-party action goes through Swytchcode (`@swytchcode/runtime` SDK, `swy` CLI for setup). Never call PayPal, Gmail, Slack, Notion or Jira APIs directly.
 - Integrations: PayPal (sandbox only), Gmail, Slack, Notion, Jira.
 - Guardrails: Swytchcode policies (hard block for bulk or large refunds; human approval in Slack for invoices above APPROVAL_THRESHOLD_INR), dynamic idempotency for retries plus app-level intent keys against duplicate commands, audit log.
-- System-1 layer (phase 6, optional): Laya, a Python decision model served over HTTP (laya-serve) for intent routing, email triage and prompt-injection guard. Always has a Gemini fallback.
+- System-1 layer (phase 6, optional): skipped. Intent routing and email triage stay with the LLM; the injection guard is rule-based (`untrusted.ts`) plus the Swytchcode email policy.
 - Voice: Web Speech API in Chrome (SpeechRecognition + speechSynthesis). Text input always available.
 - Streaming: a server orchestrator emits typed `RunEvent`s (`src/lib/events.ts`) to the browser as NDJSON over a POST fetch stream. The browser folds them with `src/lib/run-reducer.ts`.
 - Storage: no external DB. Business records live in Notion (source of truth). Run history lives in `data/runs.json` via `src/lib/store/runs.ts`.
@@ -87,7 +87,7 @@ Signature elements:
 1. Sidebar is the bahi cover: deep red cloth texture (CSS linen), gold dashed stitch line inset along the edge, wordmark "Bahi" with "बही".
 2. Main canvas is ledger paper: very faint horizontal rules and one thin red margin line; timestamps live in the margin (`--margin-x`).
 3. Rubber stamps for states: APPROVED (approval blue), BLOCKED (blocked red), SENT (paid green), AWAITING (pending amber), DENIED (blocked red), EXPIRED (grey). Slam animation: scale 1.4 -> 1, settle at -6 deg, about 180 ms, slight ink blur settle. Respect prefers-reduced-motion.
-4. Run timeline as ledger entries: margin timestamp, icon, verb in serif ("Invoice banaya"), detail in sans, chips such as "Swytchcode: policy ok", "Laya: 34 ms", "retry x1".
+4. Run timeline as ledger entries: margin timestamp, icon, verb in serif ("Invoice banaya"), detail in sans, chips such as "Swytchcode: policy ok", "retry x1".
 5. Command bar is the hero: large input, ink-red mic button, Hinglish example chips.
 
 Icons: Phosphor (`@phosphor-icons/react`, use the `XxxIcon` names; `/ssr` entry in server components). Motion: `motion/react`. Entrances 160-220 ms ease-out, no bouncy springs except the stamp. Numbers count up. Skeletons shaped like ledger rows.
@@ -98,7 +98,7 @@ If a design-taste skill is available, use it for every UI decision (the brief's 
 
 ## 6. Engineering rules
 
-- Never invent APIs. Before coding against Swytchcode, the AI SDK, Laya or any provider, read current docs (docs.swytchcode.com/llms.txt, installed package types in node_modules, `swy --help`). If docs and reality differ, trust reality and record it in PROGRESS.md.
+- Never invent APIs. Before coding against Swytchcode, the AI SDK or any provider, read current docs (docs.swytchcode.com/llms.txt, installed package types in node_modules, `swy --help`). If docs and reality differ, trust reality and record it in PROGRESS.md.
 - Secrets only in `.env.local`. Never log or commit secrets.
 - Sandbox and test data only. PayPal sandbox only.
 - Every external action goes through Swytchcode.
@@ -136,5 +136,5 @@ If a design-taste skill is available, use it for every UI decision (the brief's 
 3. Agent brain and live console.
 4. Guardrails: policies, approval, block, idempotency, audit.
 5. Voice, UX polish, e2e tests.
-6. Laya System-1 layer (optional).
+6. Laya System-1 layer (optional): skipped.
 7. Demo hardening and submission.

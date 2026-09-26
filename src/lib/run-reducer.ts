@@ -48,10 +48,10 @@ export interface ToolEntry extends EntryBase {
 
 export type TimelineEntry =
   | (EntryBase & { kind: "started"; command: string; inputMode: "voice" | "text"; mode: "live" | "mock"; replay: ReplayInfo | null })
-  | (EntryBase & { kind: "intent"; source: "laya" | "llm"; label: string; confidence: number; ms: number })
+  | (EntryBase & { kind: "intent"; source: "llm"; label: string; confidence: number; ms: number })
   | (EntryBase & { kind: "thinking"; text: string })
   | ToolEntry
-  | (EntryBase & { kind: "guard"; flagged: boolean; reason: string; source: "laya" | "llm" | "rules" })
+  | (EntryBase & { kind: "guard"; flagged: boolean; reason: string; source: "llm" | "rules" })
   | (EntryBase & { kind: "speak"; text: string })
   | (EntryBase & { kind: "final"; summary: string })
   | (EntryBase & { kind: "error"; message: string; recoverable: boolean });
@@ -103,7 +103,7 @@ export interface RunView {
   startedAt: string | null;
   endedAt: string | null;
   entries: TimelineEntry[];
-  intent: { source: "laya" | "llm"; label: string; confidence: number; ms: number } | null;
+  intent: { source: "llm"; label: string; confidence: number; ms: number } | null;
   pendingApprovals: PendingApproval[];
   spoken: string[];
   final: string | null;

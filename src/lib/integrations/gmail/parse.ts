@@ -5,6 +5,12 @@ import type { EmailMessage, EmailSummary, InsertEmailInput, SendEmailInput } fro
 /** Gmail JSON <-> domain. Pure; tested against fixtures/recorded/gmail. */
 
 export const PROCESSED_LABEL = "Bahi/Processed";
+
+/** Gmail search for mail Bahi has not handled yet; `afterEpochSec` limits it to mail after the inbox cursor. */
+export function unreadQuery(afterEpochSec: number | null): string {
+  const base = `is:unread in:inbox -label:${PROCESSED_LABEL.replace("/", "-")}`;
+  return afterEpochSec === null ? base : `${base} after:${afterEpochSec}`;
+}
 const BODY_LIMIT = 6000;
 
 export const GmailListRawSchema = z

@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildRfc822, decodeBase64Url, emailAddress, GmailLabelsRawSchema, GmailListRawSchema, GmailMessageRawSchema, GmailSentRawSchema, toEmailMessage, toSummaries } from "./gmail/parse";
+import { buildRfc822, decodeBase64Url, emailAddress, GmailLabelsRawSchema, GmailListRawSchema, GmailMessageRawSchema, GmailSentRawSchema, toEmailMessage, toSummaries, unreadQuery } from "./gmail/parse";
 import { deliveryIssueFields, invoiceLabel, JiraCreatedRawSchema, JiraProjectRawSchema, JiraSearchRawSchema, toJiraIssue } from "./jira/parse";
 import { paypalToInr, toPaypalMoney } from "./money";
 import { DatabaseRawSchema, DataSourceRawSchema, LEDGER_PROPERTIES, PageRawSchema, QueryRawSchema, schemaPatch, toLedgerRow, toNotionProperties } from "./notion/parse";
@@ -172,5 +172,14 @@ describe("Jira", () => {
     const f = deliveryIssueFields({ invoiceId: "INV-1", clientName: "Gupta Electronics", description: "Catalogue shoot", amountInr: 24000 }, "BAHI");
     expect(f).toMatchObject({ project: { key: "BAHI" }, issuetype: { name: "Task" }, labels: ["bahi", "bahi-inv-INV-1"] });
     expect(JSON.stringify(f.description)).toContain("₹24,000");
+  });
+});
+
+describe("gmail unreadQuery", () => {
+  it("reads the whole unread inbox without a cursor", () => {
+    expect(unreadQuery(null)).toBe("is:unread in:inbox -label:Bahi-Processed");
+  });
+  it("limits to mail after the inbox cursor (epoch seconds)", () => {
+    expect(unreadQuery(1_790_000_000)).toBe("is:unread in:inbox -label:Bahi-Processed after:1790000000");
   });
 });

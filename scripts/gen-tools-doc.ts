@@ -50,6 +50,7 @@ const CAPABILITY: Record<ToolKey, string> = {
   jiraSearch: "Search issues (JQL)",
   jiraGetProject: "Get project",
   jiraMyself: "Current user (account check)",
+  jiraDeleteIssue: "Delete issue (demo reset: Bahi tasks only)",
 };
 
 const NOTES: Partial<Record<ToolKey, string>> = {

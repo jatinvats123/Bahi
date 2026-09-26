@@ -92,10 +92,6 @@ export default async function SettingsPage() {
                 {c.models.groq.configured ? <Chip tone="paid">Key set</Chip> : <Chip>Key nahi</Chip>}
                 <span className="num mt-1 block text-[12.5px] break-words text-ink-soft">{c.models.groq.model.split(",").join(" > ")}</span>
               </Row>
-              <Row label="Laya (System 1)" hint="Optional, phase 6. Intent routing, email triage, injection guard.">
-                {c.laya.enabled ? <Chip tone="paid">On</Chip> : <Chip>Off</Chip>}
-                <span className="num ml-2 text-[12.5px] text-ink-soft">{c.laya.url}</span>
-              </Row>
             </dl>
           </Card>
 

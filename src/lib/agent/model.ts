@@ -159,6 +159,28 @@ function withTimeout(parent: AbortSignal | undefined, ms: number): { signal: Abo
   };
 }
 
+/**
+ * Settle as soon as `signal` aborts, even if the provider call ignores the signal
+ * (a stalled socket once held a live run until the whole-run timeout).
+ */
+function raceAbort<R>(work: PromiseLike<R>, signal: AbortSignal): Promise<R> {
+  return new Promise<R>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    if (signal.aborted) onAbort();
+    else signal.addEventListener("abort", onAbort, { once: true });
+    Promise.resolve(work).then(
+      (v) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(v);
+      },
+      (e: unknown) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(e);
+      },
+    );
+  });
+}
+
 export interface FallbackModel extends LanguageModelV4 {
   /** The candidate that answered the most recent call. */
   readonly active: ModelCandidate;
@@ -220,7 +242,7 @@ export function createFallbackModel(
       if (lastFailure) opts.onSwitch?.({ from: lastFailure.from, to: c, reason: lastFailure.reason, message: switchMessage(lastFailure.from, c, lastFailure.reason) });
       const t = withTimeout(options.abortSignal, stepTimeoutMs);
       try {
-        const r = await call(c.model, { ...options, abortSignal: t.signal });
+        const r = await raceAbort(call(c.model, { ...options, abortSignal: t.signal }), t.signal);
         index = i;
         return r;
       } catch (err) {

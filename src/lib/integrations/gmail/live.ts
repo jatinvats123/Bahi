@@ -14,7 +14,9 @@ import {
   PROCESSED_LABEL,
   toEmailMessage,
   toSummaries,
+  unreadQuery,
 } from "./parse";
+import { readInboxCursor } from "./cursor";
 
 export function createGmailLive(): GmailAdapter {
   let processedLabelId: string | undefined;
@@ -45,7 +47,7 @@ export function createGmailLive(): GmailAdapter {
     async listUnread(opts = {}, ctx) {
       const r = await liveCall(
         "gmailListMessages",
-        { params: { userId: "me", q: `is:unread in:inbox -label:${PROCESSED_LABEL.replace("/", "-")}`, maxResults: opts.max ?? 10 } },
+        { params: { userId: "me", q: unreadQuery(readInboxCursor()), maxResults: opts.max ?? 10 } },
         GmailListRawSchema,
         { ctx, summary: "unread inbox" },
       );

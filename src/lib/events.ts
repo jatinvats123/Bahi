@@ -57,7 +57,7 @@ export const RunStartedEventSchema = z.object({
 export const IntentEventSchema = z.object({
   ...base,
   type: z.literal("intent"),
-  source: z.enum(["laya", "llm"]),
+  source: z.enum(["llm"]),
   label: z.string(),
   confidence: z.number().min(0).max(1),
   ms: z.number().nonnegative(),
@@ -145,7 +145,7 @@ export const GuardEventSchema = z.object({
   type: z.literal("guard"),
   flagged: z.boolean(),
   reason: z.string(),
-  source: z.enum(["laya", "llm", "rules"]),
+  source: z.enum(["llm", "rules"]),
 });
 
 export const SpeakEventSchema = z.object({

@@ -1,4 +1,5 @@
 import "server-only";
+import { z } from "zod";
 import { getEnv } from "../../env";
 import { liveCall } from "../live-call";
 import { success } from "../result";
@@ -24,6 +25,19 @@ export function createJiraLive(): JiraAdapter {
       if (!r.ok) return r;
       const first = r.value.issues[0];
       return success(first ? toJiraIssue(first, env.JIRA_BASE_URL) : null, r.ms);
+    },
+
+    async listBahiTasks(ctx) {
+      const env = getEnv();
+      const jql = `project = "${env.JIRA_PROJECT_KEY}" AND labels = "bahi" ORDER BY created DESC`;
+      const r = await liveCall("jiraSearch", { body: { jql, maxResults: 100, fields: ["summary", "status"] } }, JiraSearchRawSchema, { ctx, summary: "label bahi" });
+      return r.ok ? success(r.value.issues.map((i) => toJiraIssue(i, env.JIRA_BASE_URL)), r.ms) : r;
+    },
+
+    async deleteTask(key, ctx) {
+      // Jira answers 204 with no body.
+      const r = await liveCall("jiraDeleteIssue", { params: { issueIdOrKey: key } }, z.union([z.null(), z.object({}).loose(), z.string()]), { ctx, summary: key, what: "Jira delete" });
+      return r.ok ? success({ key }, r.ms) : r;
     },
 
     async getProject(ctx) {

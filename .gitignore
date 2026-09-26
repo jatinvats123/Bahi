@@ -45,7 +45,7 @@ next-env.d.ts
 data/*.json
 data/*.tmp
 
-# python (laya, phase 6)
+# python
 .venv/
 __pycache__/
 *.pyc

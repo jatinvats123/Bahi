@@ -168,5 +168,10 @@ export function createNotionLive(): NotionAdapter {
 
     markPaid: (pageId, ctx, paidOn = istDateKey(new Date())) => updatePage(pageId, toNotionProperties({ status: "Paid", paidOn }), ctx, "Paid"),
     setLastReminder: (pageId, date, ctx) => updatePage(pageId, toNotionProperties({ lastReminder: date }), ctx, `reminder ${date}`),
+
+    async archiveRow(pageId, ctx) {
+      const r = await liveCall("notionUpdatePage", { params: { page_id: pageId }, body: { in_trash: true } }, PageRawSchema, { ctx, summary: "archive" });
+      return r.ok ? success({ pageId }, r.ms) : r;
+    },
   };
 }

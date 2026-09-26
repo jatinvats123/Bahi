@@ -188,7 +188,7 @@ function Entry({ entry, status, recorded }: { entry: TimelineEntry; status: RunV
           <Verb>Samjha: {humanLabel(entry.label)}</Verb>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             <Chip mono>
-              {entry.source === "laya" ? "Laya" : "LLM"}: {formatDuration(entry.ms)}
+              LLM: {formatDuration(entry.ms)}
             </Chip>
             <Chip mono>{Math.round(entry.confidence * 100)}% yakeen</Chip>
           </div>
@@ -251,7 +251,7 @@ function Entry({ entry, status, recorded }: { entry: TimelineEntry; status: RunV
           <Verb>{entry.flagged ? "Shak hua: koi action nahi" : "Guard: sab theek"}</Verb>
           <Detail>{entry.reason}</Detail>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            <Chip tone={entry.flagged ? "blocked" : "paid"}>{entry.source === "laya" ? "Laya guard" : entry.source === "llm" ? "LLM guard" : "Rules"}</Chip>
+            <Chip tone={entry.flagged ? "blocked" : "paid"}>{entry.source === "llm" ? "LLM guard" : "Rules"}</Chip>
           </div>
         </Row>
       );
@@ -320,7 +320,7 @@ export function RunTimeline({
   }
 
   return (
-    <section aria-labelledby="run-title" className="mt-10">
+    <section aria-labelledby="run-title" className="mt-10 overflow-x-clip">
       <header className="margin-grid pb-4">
         <div className="flex justify-end pt-1.5 pr-2.5">
           {view.startedAt ? <span className="num text-[11px] text-ink-faint-text">{formatDateIST(view.startedAt)}</span> : null}

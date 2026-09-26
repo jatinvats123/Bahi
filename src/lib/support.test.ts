@@ -16,7 +16,6 @@ describe("env", () => {
       SWYTCH_MODE: "mock",
       APPROVAL_THRESHOLD_INR: 50000,
       REFUND_BLOCK_THRESHOLD_INR: 10000,
-      LAYA_ENABLED: false,
       BUSINESS_NAME: "DukaanSetu",
       SLACK_OPS_CHANNEL: "bahi-ops",
       PAYPAL_CURRENCY: "INR",
