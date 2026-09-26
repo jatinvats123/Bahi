@@ -186,6 +186,21 @@ describe("phase 4: approvals on a plan without them", () => {
   });
 });
 
+describe("phase 7: expired swy login", () => {
+  const msg = '{"error":"anonymous use is limited to 2 executions - run `swytchcode login` to keep running commands"}';
+  it("is an auth problem with the fix, not a policy block (non-zero exit)", () => {
+    const e = classifyCliFailure({ exitCode: 6, stdout: "", stderr: `Telemetry is disabled.
+${msg}` });
+    expect(e).toMatchObject({ kind: "auth", category: "login_required" });
+    expect(e.message).toMatch(/swy login/);
+  });
+  it("is an auth problem when the CLI prints it with exit 0", () => {
+    const r = unwrapKernelOutput(JSON.parse(msg));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.kind).toBe("auth");
+  });
+});
+
 describe("swy exec --explain output", () => {
   it("parses the explain block (printed on stderr in 2.23.5)", async () => {
     const { parseExplainOutput } = await import("./runtime");

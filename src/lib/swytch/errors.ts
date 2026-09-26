@@ -121,6 +121,8 @@ const CATEGORY_KIND: Record<string, ExecErrorKind> = {
 
 const APPROVAL_RE = /Approval requested for (\S+) \(policy "([^"]+)"\)\. Request ([A-Za-z0-9_-]+)/;
 const POLICY_RE = /blocked by policy "([^"]+)"/;
+/** Expired `swy login` session: the CLI falls back to anonymous use and stops after 2 executions (observed 26 Sep 2026). */
+const LOGIN_RE = /anonymous use is limited|run `?swytchcode login`? to keep running|login required/i;
 const APPROVAL_REFUSED_RE = /approval request refused|approval requests are not included in your current plan/i;
 const DENIED_RE = /approval (was )?(denied|rejected)/i;
 const EXPIRED_RE = /approval (request )?(has )?expired/i;
@@ -188,6 +190,9 @@ export function classifyCliFailure(f: CliFailure): ExecError {
       retryable: false,
     };
   }
+  if (LOGIN_RE.test(text)) {
+    return { kind: "auth", message: "Swytchcode session expired. Run swy login in a terminal, then try again.", exitCode: f.exitCode, category: "login_required", retryable: false };
+  }
   // REQUIRES_APPROVAL on a plan without approvals: the command is not run (observed 26 Sep 2026, exit 6).
   if (APPROVAL_REFUSED_RE.test(text)) {
     return applyTextHints(
@@ -253,6 +258,7 @@ export function normalizeSdkError(e: unknown): ExecError {
 export function ownerMessage(err: ExecError, integrationLabel: string): string {
   switch (err.kind) {
     case "auth":
+      if (err.category === "login_required") return "Swytchcode login khatam ho gaya. Terminal mein swy login chalayein, phir dobara bolein.";
       return `${integrationLabel} se connection toot gaya hai. Settings mein reconnect karein.`;
     case "policy_blocked":
       return "Rok diya gaya: policy.";
@@ -333,6 +339,9 @@ export function unwrapKernelOutput(data: unknown): { ok: true; data: unknown } |
           raw: { status, category, body: obj.data },
         },
       };
+    }
+    if (typeof obj.error === "string" && LOGIN_RE.test(obj.error)) {
+      return { ok: false, error: { kind: "auth", message: "Swytchcode session expired. Run swy login in a terminal, then try again.", category: "login_required", retryable: false } };
     }
     if ("success" in obj && typeof obj.success === "boolean") {
       if (obj.success) return { ok: true, data: "result" in obj ? obj.result : null };

@@ -42,6 +42,15 @@ const WIN_ARCH = process.arch === "arm64" ? "arm64" : "x64";
  * then plain "swytchcode" on PATH (fine on macOS/Linux; on Windows the npm entry is a
  * .cmd shim that needs a shell, so we avoid it there).
  */
+/**
+ * Environment for the CLI. Telemetry is off unless SWYTCHCODE_NO_TELEMETRY=0: its PostHog
+ * upload cost about 1.4 s per call, and up to 30 s when PostHog was unreachable (26 Sep 2026).
+ */
+export function cliEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const v = env.SWYTCHCODE_NO_TELEMETRY?.trim();
+  return { ...env, SWYTCHCODE_NO_TELEMETRY: v === "0" ? "" : v || "1" };
+}
+
 export function resolveSwytchcodeBinary(env: NodeJS.ProcessEnv = process.env, cwd: string = process.cwd()): string | null {
   const explicit = env.SWYTCHCODE_BIN?.trim();
   if (explicit) return explicit;
@@ -95,7 +104,7 @@ export function runCli(req: TransportRequest): Promise<TransportResponse> {
 
     const child = spawn(bin, cliArgs(req.tool, req.dryRun), {
       cwd: req.cwd,
-      env: process.env,
+      env: cliEnv(),
       windowsHide: true,
       shell: false,
     });
@@ -140,7 +149,7 @@ export function runCliText(opts: { bin: string | null; args: string[]; cwd: stri
     let stdout = "";
     let stderr = "";
     let settled = false;
-    const child = spawn(bin, opts.args, { cwd: opts.cwd, env: process.env, windowsHide: true, shell: false });
+    const child = spawn(bin, opts.args, { cwd: opts.cwd, env: cliEnv(), windowsHide: true, shell: false });
     const timer = setTimeout(() => child.kill(), opts.timeoutMs ?? 20_000);
     const done = (r: { code: number | null; stdout: string; stderr: string; error?: string }) => {
       if (settled) return;
@@ -193,6 +202,7 @@ export function runSdk(req: TransportRequest): Promise<TransportResponse> {
   return new Promise((resolve) => {
     const env: Record<string, string> = {};
     if (req.bin) env.SWYTCHCODE_BIN = req.bin; // skip the .cmd shim + node launcher hop
+    env.SWYTCHCODE_NO_TELEMETRY = cliEnv().SWYTCHCODE_NO_TELEMETRY ?? "1";
     const worker = new Worker(SDK_WORKER_SOURCE, {
       eval: true,
       workerData: {

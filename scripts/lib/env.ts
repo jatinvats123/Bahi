@@ -1,3 +1,4 @@
+import { setDefaultResultOrder } from "node:dns";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
@@ -6,6 +7,8 @@ import path from "node:path";
  * loader; existing process env wins). Call before importing app modules.
  */
 export function loadLocalEnv(): void {
+  // Same as src/instrumentation.ts: broken IPv6 must not stall model calls.
+  setDefaultResultOrder("ipv4first");
   const file = path.join(process.cwd(), ".env.local");
   if (existsSync(file)) process.loadEnvFile(file);
 }
