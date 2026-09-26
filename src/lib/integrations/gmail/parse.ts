@@ -6,10 +6,15 @@ import type { EmailMessage, EmailSummary, InsertEmailInput, SendEmailInput } fro
 
 export const PROCESSED_LABEL = "Bahi/Processed";
 
-/** Gmail search for mail Bahi has not handled yet; `afterEpochSec` limits it to mail after the inbox cursor. */
+/**
+ * Gmail search for mail Bahi has not handled yet (no Bahi/Processed label).
+ * Without a cursor: unread inbox mail only, so Bahi never trawls the owner's history.
+ * With a cursor: every inbox mail after it, read or not, so the owner opening a mail on
+ * their phone does not hide it from Bahi.
+ */
 export function unreadQuery(afterEpochSec: number | null): string {
-  const base = `is:unread in:inbox -label:${PROCESSED_LABEL.replace("/", "-")}`;
-  return afterEpochSec === null ? base : `${base} after:${afterEpochSec}`;
+  const notDone = `in:inbox -label:${PROCESSED_LABEL.replace("/", "-")}`;
+  return afterEpochSec === null ? `is:unread ${notDone}` : `${notDone} after:${afterEpochSec}`;
 }
 const BODY_LIMIT = 6000;
 

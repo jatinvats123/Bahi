@@ -269,6 +269,26 @@ export function CommandView({
     window.dispatchEvent(new CustomEvent<DemoRunDetail>(DEMO_EVENT, { detail: { scenario: id } }));
   }, []);
 
+  // ---- ?approval=<id> (the link in the Slack approval message, often opened on a phone):
+  // bring that card into view and focus Approve, since on small screens the rail sits below the fold.
+  const approvalLinkDone = useRef(false);
+  useEffect(() => {
+    if (approvalLinkDone.current) return;
+    const url = new URL(window.location.href);
+    const id = url.searchParams.get("approval");
+    if (!id) {
+      approvalLinkDone.current = true;
+      return;
+    }
+    const card = document.querySelector<HTMLElement>(`[data-approval-id="${CSS.escape(id)}"]`);
+    if (!card) return; // not loaded yet: try again when the desk refreshes
+    approvalLinkDone.current = true;
+    card.scrollIntoView({ block: "center", behavior: "smooth" });
+    card.querySelector<HTMLButtonElement>("[data-approve]")?.focus({ preventScroll: true });
+    url.searchParams.delete("approval");
+    window.history.replaceState(null, "", url.pathname + url.search);
+  }, [desk.pending, desk.recent]);
+
   const onRecall = useCallback(() => {
     const history = readHistory();
     if (history.length === 0) return null;

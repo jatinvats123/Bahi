@@ -94,7 +94,7 @@ export function ApprovalCard({
   const headline = data.client && data.amountInr !== null ? `${data.client}, ${formatINR(data.amountInr)}` : (data.summary ?? "Bada invoice");
 
   return (
-    <div className={`rounded-bahi border ${pending ? "border-pending/50 bg-pending/5" : "border-rule bg-paper-raised"} ${compact ? "p-3.5" : "mt-3 p-4"}`}>
+    <div data-approval-id={data.approvalId ?? undefined} className={`rounded-bahi border ${pending ? "border-pending/50 bg-pending/5" : "border-rule bg-paper-raised"} ${compact ? "p-3.5" : "mt-3 p-4"}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className={`font-serif leading-snug text-ink ${compact ? "text-[16px]" : "text-[18px]"}`}>{headline}</p>
@@ -127,7 +127,7 @@ export function ApprovalCard({
               Slack {data.channel} mein bheja gaya. <span className="font-semibold text-ink">Yahan approve karein</span> ya Slack wale link se.
             </p>
             <div className="mt-2.5 flex flex-wrap gap-2">
-              <Button variant="primary" size="sm" disabled={busy !== null} onClick={() => void decide("approve")}>
+              <Button variant="primary" size="sm" disabled={busy !== null} onClick={() => void decide("approve")} data-approve>
                 <CheckIcon size={15} weight="bold" aria-hidden />
                 {busy === "approve" ? "Approve ho raha hai" : "Approve karein"}
               </Button>

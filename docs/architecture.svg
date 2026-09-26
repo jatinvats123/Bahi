@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 760" width="1240" height="760" font-family="Manrope, 'Segoe UI', Arial, sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">Bahi architecture</title>
+  <desc id="d">The owner speaks or types in the browser. The Next.js server runs the agent (Vercel AI SDK, Gemini with Groq fallback) over 13 domain tools with code guardrails. Every external action goes through the Swytchcode kernel (validate, policies, credentials, idempotency, audit) to PayPal sandbox, Gmail, Slack, Notion and Jira. Run events stream back to the browser as NDJSON.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1D1814"/></marker>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8E1B17"/></marker>
+    <pattern id="rules" width="40" height="28" patternUnits="userSpaceOnUse"><path d="M0 27.5 H40" stroke="#E4D9C6" stroke-width="1"/></pattern>
+  </defs>
+
+  <rect width="1240" height="760" fill="#F5EFE3"/>
+  <rect width="1240" height="760" fill="url(#rules)"/>
+  <path d="M56 0 V760" stroke="#C9A29C" stroke-width="1.5"/>
+
+  <text x="80" y="52" font-family="Fraunces, Georgia, serif" font-size="30" fill="#1D1814">Bahi: how a spoken command becomes a safe action</text>
+  <text x="80" y="80" font-size="15" fill="#5E534A">Every external call goes through Swytchcode. The model never talks to a provider API.</text>
+
+  <!-- column 1: owner + browser -->
+  <g>
+    <rect x="80" y="120" width="250" height="92" rx="6" fill="#FBF8F1" stroke="#D9CDB8"/>
+    <text x="100" y="152" font-family="Fraunces, Georgia, serif" font-size="19" fill="#1D1814">Owner</text>
+    <text x="100" y="176" font-size="13.5" fill="#5E534A">Voice or text, English or Hinglish</text>
+    <text x="100" y="196" font-size="13.5" fill="#5E534A">"Verma Sweets ko 80,000 ka invoice"</text>
+
+    <rect x="80" y="250" width="250" height="250" rx="6" fill="#FBF8F1" stroke="#D9CDB8"/>
+    <text x="100" y="282" font-family="Fraunces, Georgia, serif" font-size="19" fill="#1D1814">Browser (Chrome)</text>
+    <text x="100" y="310" font-size="13.5" fill="#1D1814">Web Speech in and out</text>
+    <text x="100" y="330" font-size="13.5" fill="#5E534A">strip: ₹80,000 · Verma · invoice</text>
+    <text x="100" y="358" font-size="13.5" fill="#1D1814">Run timeline as ledger entries</text>
+    <text x="100" y="378" font-size="13.5" fill="#5E534A">reducer folds RunEvents</text>
+    <text x="100" y="406" font-size="13.5" fill="#1D1814">Stamps: SENT, AWAITING,</text>
+    <text x="100" y="426" font-size="13.5" fill="#1D1814">APPROVED, BLOCKED, DENIED</text>
+    <text x="100" y="454" font-size="13.5" fill="#1D1814">Approve / deny card</text>
+    <text x="100" y="474" font-size="13.5" fill="#5E534A">dashboard or phone</text>
+
+    <path d="M205 212 V246" stroke="#1D1814" stroke-width="1.6" marker-end="url(#a)"/>
+  </g>
+
+  <!-- column 2: server -->
+  <g>
+    <rect x="390" y="120" width="360" height="560" rx="6" fill="#FBF8F1" stroke="#D9CDB8"/>
+    <text x="410" y="152" font-family="Fraunces, Georgia, serif" font-size="19" fill="#1D1814">Next.js 16 server (Node runtime)</text>
+
+    <rect x="410" y="172" width="320" height="64" rx="6" fill="#ECE3D2"/>
+    <text x="426" y="198" font-size="14" font-weight="700" fill="#1D1814">POST /api/runs</text>
+    <text x="426" y="220" font-size="13" fill="#5E534A">NDJSON stream, run bus, reattach, stop</text>
+
+    <rect x="410" y="250" width="320" height="120" rx="6" fill="#ECE3D2"/>
+    <text x="426" y="276" font-size="14" font-weight="700" fill="#1D1814">Agent (Vercel AI SDK 7)</text>
+    <text x="426" y="298" font-size="13" fill="#5E534A">reason, pick tools, act, read results,</text>
+    <text x="426" y="316" font-size="13" fill="#5E534A">follow up, final answer (max 12 steps)</text>
+    <text x="426" y="342" font-size="13" fill="#1D1814">Gemini Flash, backup key, then Groq</text>
+    <text x="426" y="360" font-size="13" fill="#5E534A">per LLM call, hard 30 s step timeout</text>
+
+    <rect x="410" y="384" width="320" height="138" rx="6" fill="#ECE3D2"/>
+    <text x="426" y="410" font-size="14" font-weight="700" fill="#1D1814">13 domain tools + code guardrails</text>
+    <text x="426" y="432" font-size="13" fill="#5E534A">amount checked against the owner's words</text>
+    <text x="426" y="450" font-size="13" fill="#5E534A">intent key: same invoice twice = once</text>
+    <text x="426" y="468" font-size="13" fill="#5E534A">email bodies fenced as untrusted data</text>
+    <text x="426" y="486" font-size="13" fill="#5E534A">refunds only on the owner's own words</text>
+    <text x="426" y="504" font-size="13" fill="#5E534A">paid status only from PayPal</text>
+
+    <rect x="410" y="536" width="320" height="64" rx="6" fill="#ECE3D2"/>
+    <text x="426" y="562" font-size="14" font-weight="700" fill="#1D1814">Approval desk</text>
+    <text x="426" y="584" font-size="13" fill="#5E534A">hold, Slack notice, wait, stamp, expire</text>
+
+    <rect x="410" y="614" width="320" height="50" rx="6" fill="#ECE3D2"/>
+    <text x="426" y="636" font-size="13" fill="#1D1814">Typed adapters: live (Swytchcode) or mock</text>
+    <text x="426" y="654" font-size="13" fill="#5E534A">Outcome&lt;T&gt;, never throw</text>
+
+    <path d="M570 236 V246" stroke="#1D1814" stroke-width="1.6" marker-end="url(#a)"/>
+    <path d="M570 370 V380" stroke="#1D1814" stroke-width="1.6" marker-end="url(#a)"/>
+  </g>
+
+  <!-- browser <-> server -->
+  <path d="M330 300 H386" stroke="#1D1814" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="338" y="292" font-size="12" fill="#5E534A">command</text>
+  <path d="M388 340 H334" stroke="#8E1B17" stroke-width="1.6" marker-end="url(#ar)"/>
+  <text x="336" y="358" font-size="12" fill="#8E1B17">RunEvents</text>
+
+  <!-- column 3: swytchcode -->
+  <g>
+    <rect x="810" y="120" width="190" height="560" rx="6" fill="#8E1B17"/>
+    <path d="M820 130 H990 V670 H820 Z" fill="none" stroke="#D7AC52" stroke-width="1.4" stroke-dasharray="6 5"/>
+    <text x="905" y="160" text-anchor="middle" font-family="Fraunces, Georgia, serif" font-size="20" fill="#FBF8F1">Swytchcode</text>
+    <text x="905" y="182" text-anchor="middle" font-size="12.5" fill="#F1E8DA">kernel, one exec per call</text>
+    <g font-size="13.5" fill="#FBF8F1" text-anchor="middle">
+      <rect x="834" y="206" width="142" height="40" rx="6" fill="#6B120F"/><text x="905" y="231">1 validate input</text>
+      <rect x="834" y="262" width="142" height="40" rx="6" fill="#6B120F" stroke="#D7AC52"/><text x="905" y="287">2 policies</text>
+      <rect x="834" y="318" width="142" height="40" rx="6" fill="#6B120F"/><text x="905" y="343">3 credentials</text>
+      <rect x="834" y="374" width="142" height="40" rx="6" fill="#6B120F"/><text x="905" y="399">4 idempotency</text>
+      <rect x="834" y="430" width="142" height="40" rx="6" fill="#6B120F"/><text x="905" y="455">5 provider call</text>
+      <rect x="834" y="486" width="142" height="40" rx="6" fill="#6B120F"/><text x="905" y="511">6 audit log</text>
+    </g>
+    <text x="905" y="560" text-anchor="middle" font-size="12.5" fill="#F1E8DA">blocked = exit 6,</text>
+    <text x="905" y="578" text-anchor="middle" font-size="12.5" fill="#F1E8DA">provider never called</text>
+    <text x="905" y="612" text-anchor="middle" font-size="12.5" fill="#D7AC52">36 canonical tools</text>
+    <text x="905" y="630" text-anchor="middle" font-size="12.5" fill="#D7AC52">3 policies</text>
+  </g>
+  <path d="M750 639 H806" stroke="#1D1814" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="756" y="630" font-size="12" fill="#5E534A">exec</text>
+
+  <!-- column 4: providers -->
+  <g font-size="13" fill="#5E534A">
+    <rect x="1060" y="150" width="150" height="72" rx="6" fill="#FBF8F1" stroke="#D9CDB8"/>
+    <text x="1076" y="178" font-size="15" font-weight="700" fill="#1D1814">PayPal</text><text x="1076" y="200">sandbox invoices</text>
+    <rect x="1060" y="244" width="150" height="72" rx="6" fill="#FBF8F1" stroke="#D9CDB8"/>
+    <text x="1076" y="272" font-size="15" font-weight="700" fill="#1D1814">Gmail</text><text x="1076" y="294">inbox, reminders</text>
+    <rect x="1060" y="338" width="150" height="72" rx="6" fill="#FBF8F1" stroke="#D9CDB8"/>
+    <text x="1076" y="366" font-size="15" font-weight="700" fill="#1D1814">Slack</text><text x="1076" y="388">ops, alerts, approvals</text>
+    <rect x="1060" y="432" width="150" height="72" rx="6" fill="#FBF8F1" stroke="#D9CDB8"/>
+    <text x="1076" y="460" font-size="15" font-weight="700" fill="#1D1814">Notion</text><text x="1076" y="482">ledger, the truth</text>
+    <rect x="1060" y="526" width="150" height="72" rx="6" fill="#FBF8F1" stroke="#D9CDB8"/>
+    <text x="1076" y="554" font-size="15" font-weight="700" fill="#1D1814">Jira</text><text x="1076" y="576">delivery tasks</text>
+  </g>
+  <g stroke="#1D1814" stroke-width="1.4" fill="none" marker-end="url(#a)">
+    <path d="M976 450 C1020 450 1020 186 1056 186"/>
+    <path d="M976 450 C1024 450 1024 280 1056 280"/>
+    <path d="M976 450 C1030 450 1030 374 1056 374"/>
+    <path d="M976 450 C1030 450 1030 468 1056 468"/>
+    <path d="M976 450 C1024 450 1024 562 1056 562"/>
+  </g>
+
+  <!-- footer -->
+  <rect x="80" y="700" width="1130" height="40" rx="6" fill="#ECE3D2"/>
+  <text x="100" y="725" font-size="13.5" fill="#1D1814">Safety nets: SWYTCH_MODE=mock (fixtures, labelled Mock data) and AGENT_MODE=replay (sanitized real runs, labelled Recorded run). Neither is ever shown as live.</text>
+</svg>

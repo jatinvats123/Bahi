@@ -179,7 +179,7 @@ describe("gmail unreadQuery", () => {
   it("reads the whole unread inbox without a cursor", () => {
     expect(unreadQuery(null)).toBe("is:unread in:inbox -label:Bahi-Processed");
   });
-  it("limits to mail after the inbox cursor (epoch seconds)", () => {
-    expect(unreadQuery(1_790_000_000)).toBe("is:unread in:inbox -label:Bahi-Processed after:1790000000");
+  it("after the inbox cursor it reads opened mail too (epoch seconds)", () => {
+    expect(unreadQuery(1_790_000_000)).toBe("in:inbox -label:Bahi-Processed after:1790000000");
   });
 });

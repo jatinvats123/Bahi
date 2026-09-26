@@ -162,7 +162,7 @@ async function main() {
   if (!unread.ok) {
     failures.push(`Gmail list: ${unread.error.message}`);
     rows.push(["Gmail", "not readable", unread.error.message.slice(0, 60)]);
-  } else rows.push(["Gmail", `${unread.value.length}${unread.value.length === 50 ? "+" : ""} unread visible to Bahi`, "older mail: hidden by the inbox cursor, never changed"]);
+  } else rows.push(["Gmail", `${unread.value.length}${unread.value.length === 50 ? "+" : ""} waiting for Bahi`, "older mail: hidden by the inbox cursor, never changed"]);
 
   // Bahi: expire pending approvals
   const store = getApprovalStore();
