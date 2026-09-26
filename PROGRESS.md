@@ -9,8 +9,52 @@ Running log across phases. Update at the end of every phase (see CLAUDE.md secti
 - [~] **3. Agent brain and live console** (25 Sep 2026): agent, streaming API and UI done; eval 2/2 on S1, S3, S4, S6 in mock mode with the real LLM; live verification waits on `swy login` + provider connections (see Phase 3 manual steps). Update 26 Sep: S3, S4 and S6 ran live in phase 5 (recorded in fixtures/runs/)
 - [x] **4. Guardrails: policies, approval, block, idempotency, audit** (26 Sep 2026): 3 Swytchcode policies (validated, probed against the kernel), approval desk, blocks, intent keys, Audit tab; S1, S2, S2-deny, S5, dup and email-guard verified live and from the UI. Also closes phase 2 and 3 live verification for S1.
 - [x] **5. Voice, UX polish, e2e tests** (26 Sep 2026): voice in (Web Speech + confirm strip) and out (speechSynthesis), replay mode from real live runs of all six scenarios, Demo controls, UX fixes from a 4-width x 2-theme screenshot review, 29 Playwright e2e tests green, Lighthouse desktop 96/96 on Command; live S1 and S6 by (stubbed) voice verified end to end
-- [ ] 6. Laya System-1 layer (optional)
-- [ ] 7. Demo hardening and submission
+- [-] 6. Laya System-1 layer (optional): **skipped** by decision (26 Sep); Laya removed from UI, env and docs
+- [x] **7. Demo hardening and submission** (26 Sep 2026): `demo:reset`, failure drills, network hardening, README + architecture diagram, runbook, pitch; S1-S6 verified live after a reset
+
+## Phase 7: demo hardening and submission (done)
+
+### Done
+
+- **Start state**: phase 5 was on main and pushed. `npm run check` green; `npm run e2e` 28/29: "a finished run has no horizontal overflow" (390 px) caught the S2 stamp mid-slam (scale 1.4) 4 px past the edge. Fixed with `overflow-x: clip` on the run section; 29/29 since.
+- **`npm run demo:reset [-- --dry | --clean-only]`** (`scripts/demo-reset.ts`, idempotent, about 110 s): cancels open PayPal invoices to Bahi's clients (drafts deleted), moves every Notion ledger row to the trash (new `NotionAdapter.archiveRow`, `in_trash`), deletes Jira tasks labelled `bahi` (new `JiraAdapter.listBahiTasks` / `deleteTask`, new Swytchcode tool `jira.api.issue.delete2`, 36 tools now), expires pending approvals, then seeds the mock ledger's story with the three clients that have real demo addresses: Gupta ₹24,000 Paid today (PayPal payment + Jira task), Sharma ₹6,000 Sent not due (paid in PayPal for S3), Sharma ₹18,500 overdue 8 days, Verma ₹32,000 overdue 5 days. PayPal invoices are backdated to match (new optional `CreateInvoiceInput.issueDate`). Inbox: Verma invoice request, Sharma payment confirmation naming the real invoice id, Gupta complaint, prompt injection. Posts a Slack line and prints a summary table plus the stage commands. Mock mode calls `POST /api/demo/reset` instead.
+- **Inbox cursor** (`src/lib/integrations/gmail/cursor.ts`, `data/inbox-cursor.json`): the demo inbox is Jatin's real Gmail with 50+ unread real mails (some too large for the API: the phase-5 "five mails Gmail refused to read"). Instead of marking real mail read, `demo:reset` sets a cursor and the Gmail query becomes `in:inbox -label:Bahi-Processed after:<cursor>`. With a cursor, opened-but-unprocessed mail still counts (a live S3 missed the Sharma email because something outside Bahi had opened it). Without a cursor the old unread-only query applies.
+- **Network hardening** (found during the live runs):
+  - Broken IPv6 on this network: Node tried IPv6 only and every model call timed out (curl worked). `dns.setDefaultResultOrder("ipv4first")` in `src/instrumentation.ts` and in `scripts/lib/env.ts`.
+  - A stalled model socket held one live S1 for 8 minutes (whole-run timeout) because the provider ignored the abort signal. `model.ts` now races each call against the step timeout (`raceAbort`), with a test for a model that ignores the signal.
+  - Swytchcode CLI telemetry (PostHog) cost about 1.4 s per call and up to 30 s when PostHog was unreachable; `SWYTCHCODE_NO_TELEMETRY=1` is now set for every CLI spawn (`cliEnv()`, opt out with `0`). A demo reset went from 163 s to 107 s.
+  - An expired `swy login` ("anonymous use is limited to 2 executions") was shown as "Rok diya gaya: policy". Now `kind: auth`, `category: login_required`, owner message "Swytchcode login khatam ho gaya. Terminal mein swy login chalayein".
+- **Phone approval**: the Slack approval message links to `/?approval=<id>`; the Command page now scrolls that card into view and focuses Approve (on phones the rail is below the fold). `allowedDevOrigins` covers private LAN ranges for `next dev`.
+- **Laya removed**: Settings row, `LAYA_*` env, `laya` from the intent/guard event source enums (never emitted), timeline branches; CLAUDE.md says phase 6 was skipped.
+- **Docs**: README rewritten (pitch, problem, 3 screenshots, how it works, Mermaid + `docs/architecture.svg`, integration table with canonical ids, guardrails table, Windows setup in mock + replay without accounts, env table, scripts, tests, limitations). `docs/DEMO_RUNBOOK.md` (checklist, stage script, failure table, replay fallback, drill results). `docs/PITCH.md` (2.5-minute script with timings, 6 jury answers).
+- **Tests**: 266 unit (was 261): unread query with and without cursor, login-expired classification (exit 6 and exit 0), stalled model ignoring abort.
+
+### Verified live (26 Sep, 10:07-10:20 IST, after `demo:reset`, real LLM, sandbox)
+
+- **S1** PASS (PayPal SENT ₹15,000, Notion Sent, Slack). **S2 --auto** PASS (held by the gate, no network, pending -> approved, PayPal SENT ₹80,000, Notion Sent). **S5** PASS (BLOCKED, `swy audit` entry, no network, one refund call, one Slack alert). **S3**: all four mails handled, no failed step (Verma ₹12,000 invoice, Sharma payment verified -> Notion Paid + Jira KAN-6, Gupta complaint alert, injection flagged). **S4**: reminders to Verma and Sharma (policy `email-known-clients-only` allowed both), Slack. **S6**: spoken brief + Slack.
+- **Drills**: Gemini key invalid -> Groq (eval, mock integrations) PASS. Jira down (`JIRA_PROJECT_KEY=NOPE`, live S3) PASS: payment verified, Notion Paid, email labelled, Slack, Jira FAILED and named in the final answer. Approval not answered (`APPROVAL_TIMEOUT_SEC=20`, live S2-deny --manual) PASS: expired, no invoice, Notion Cancelled (the script's two "denied" checks report FAIL because the outcome is expired, as intended). Everything down -> replay: covered by the e2e suite.
+- Final `demo:reset` at 10:18 IST: clean stage story in place.
+- Secret scan of the whole history: no secret files ever committed; none of the `.env.local` key values appears in any commit; no provider-format keys. Nothing to rotate.
+- `npm run check` green (266), `npm run build` green, `npm run e2e` 29/29.
+- **Fresh clone** (temp folder, README steps: `npm install`, copy `.env.example`, `AGENT_MODE=replay`, build, serve): all pages and `/api/health`, `/api/brief` answer 200; `POST /api/runs` streams the S1 and S5 recordings (S5 with its block). No accounts or keys needed.
+
+### Decisions
+
+- The "Jira down" drill uses a wrong project key, not a real disconnect: Swytchcode ignores `JIRA_API_KEY` for the OAuth connection, and reconnecting needs a browser. The failure is still real (Jira rejects the call through Swytchcode).
+- `demo:reset` never marks the owner's real mail read; the cursor does the job and is undone by deleting one file.
+- On stage S3 must come before S6: the brief verifies open invoices with PayPal and reconciles the paid Sharma invoice on its own (correct behaviour, but it would take S3's moment).
+
+### Known issues
+
+- Gemini free quota was exhausted on two models all morning; runs used `gemini-3.5-flash-lite`. The quota resets at 12:30 PM IST. `GEMINI_API_KEY_BACKUP` is still empty.
+- `npm run scenario -- S2-deny --manual` reports its "denied" checks as FAIL when the approval expires (expected for the expiry drill).
+- The `?approval=` phone flow was implemented and type-checked but not exercised on a real phone.
+- Settings screenshots in `docs/screenshots/` still show the removed Laya row (they are not used in the README).
+
+### Manual steps for Jatin
+
+1. Before going on stage: the checklist in `docs/DEMO_RUNBOOK.md` (`swy login` within the hour, `npm run paypal:token`, `BAHI_PUBLIC_URL` = laptop Wi-Fi IP, `npm run demo:reset`, `npm run build` + `npm start`, Settings all green).
+2. Submit on Commudle by 3:00 PM IST.
 
 ## Phase 5: voice, UX polish, e2e (done)
 
