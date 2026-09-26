@@ -169,7 +169,7 @@ function Entry({ entry, status, recorded }: { entry: TimelineEntry; status: RunV
     case "started":
       return (
         <Row entry={entry} icon={ChatTextIcon}>
-          <Verb>Hukum mila</Verb>
+          <Verb>Baat sun li</Verb>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             <Chip>{entry.inputMode === "voice" ? "Awaaz se" : "Likh ke"}</Chip>
             {entry.replay ? (
