@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Typecheck · Lint · Unit tests
+    runs-on: ubuntu-latest
+    env:
+      # Mock integrations and recorded runs only: no model, provider or account is called.
+      SWYTCH_MODE: mock
+      AGENT_MODE: replay
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # tsc needs Next's generated route types (LayoutProps etc.), which are gitignored.
+      - name: Generate Next.js route types
+        run: npx next typegen
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests (Vitest)
+        run: npm test
