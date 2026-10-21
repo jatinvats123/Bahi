@@ -1,5 +1,7 @@
 # Bahi (बही)
 
+[![CI](https://github.com/jatinvats123/Bahi/actions/workflows/ci.yml/badge.svg)](https://github.com/jatinvats123/Bahi/actions/workflows/ci.yml)
+
 **Bol ke business chalao.** Bahi is a voice-first AI operator for Indian small businesses: say what you need in English or Hinglish, and it invoices, chases, reconciles and reports, with Swytchcode making sure it can only act safely.
 
 Built for the *Build with Swytchcode* buildathon, Track 6: AI Business Operator. Named after the *bahi-khata*, the red cloth ledger Indian traders have kept for centuries.
