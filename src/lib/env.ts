@@ -23,6 +23,17 @@ const channel = (fallback: string) =>
 
 export const EnvSchema = z
   .object({
+    /**
+     * 1 = public demo, safe to expose: recorded runs on mock data whatever else is set (see
+     * lockForPublicDemo). Off by default.
+     */
+    DEMO_PUBLIC: z
+      .preprocess(
+        (v) => (typeof v === "string" ? v.trim().toLowerCase() : v),
+        z.preprocess(blankToUndefined, z.enum(["1", "true", "0", "false"], { error: 'must be "1" (public demo) or "0"' }).default("0")),
+      )
+      .transform((v) => v === "1" || v === "true"),
+
     GEMINI_API_KEY: optionalString,
     GEMINI_API_KEY_BACKUP: optionalString,
     /** Comma-separated model ids, tried in order (defaults in src/lib/agent/defaults.ts). */
@@ -103,10 +114,36 @@ export class EnvError extends Error {
   }
 }
 
+/**
+ * DEMO_PUBLIC=1 wins over the rest of the environment: recorded runs (no model is ever called)
+ * against mock integrations (no Swytchcode, PayPal, Gmail, Slack, Notion or Jira call), with
+ * model keys and live ids dropped. It is decided here on the server, so nothing a visitor sends
+ * can switch it off.
+ */
+function lockForPublicDemo(env: Env): Env {
+  if (!env.DEMO_PUBLIC) return env;
+  return {
+    ...env,
+    AGENT_MODE: "replay",
+    SWYTCH_MODE: "mock",
+    GEMINI_API_KEY: undefined,
+    GEMINI_API_KEY_BACKUP: undefined,
+    GROQ_API_KEY: undefined,
+    SWYTCHCODE_BIN: undefined,
+    SWYTCHCODE_PROJECT_DIR: undefined,
+    NOTION_PARENT_PAGE_ID: undefined,
+    NOTION_LEDGER_DATABASE_ID: undefined,
+    NOTION_LEDGER_DATA_SOURCE_ID: undefined,
+    JIRA_BASE_URL: undefined,
+    BUSINESS_EMAIL: undefined,
+    PAYPAL_MERCHANT_EMAIL: undefined,
+  };
+}
+
 /** Parse an env-like object. Exported for tests; app code uses getEnv(). */
 export function parseEnv(source: Record<string, string | undefined>): Env {
   const result = EnvSchema.safeParse(source);
-  if (result.success) return result.data;
+  if (result.success) return lockForPublicDemo(result.data);
   throw new EnvError(result.error.issues.map((i) => `${i.path.join(".") || "env"}: ${i.message}`));
 }
 

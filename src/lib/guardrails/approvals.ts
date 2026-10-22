@@ -4,6 +4,7 @@ import { EventEmitter } from "node:events";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
+import { getEnv } from "../env";
 import { renameWithRetry } from "../store/runs";
 
 /**
@@ -56,7 +57,8 @@ export function newApprovalId(): string {
   return `apr_${randomBytes(6).toString("hex")}`;
 }
 
-export function createApprovalStore(filePath: string, now: () => Date = () => new Date()) {
+/** filePath null = memory only (the public demo writes nothing to disk). */
+export function createApprovalStore(filePath: string | null, now: () => Date = () => new Date()) {
   const bus = new EventEmitter();
   bus.setMaxListeners(100);
   let queue: Promise<unknown> = Promise.resolve();
@@ -65,8 +67,10 @@ export function createApprovalStore(filePath: string, now: () => Date = () => ne
     queue = next.catch(() => undefined);
     return next;
   };
+  let memory: ApprovalRecord[] = [];
 
   async function readAll(): Promise<ApprovalRecord[]> {
+    if (filePath === null) return memory;
     try {
       const parsed = FileSchema.safeParse(JSON.parse(await readFile(filePath, "utf8")));
       return parsed.success ? parsed.data.approvals : [];
@@ -76,6 +80,10 @@ export function createApprovalStore(filePath: string, now: () => Date = () => ne
   }
 
   async function writeAll(approvals: ApprovalRecord[]): Promise<void> {
+    if (filePath === null) {
+      memory = approvals.slice(0, MAX_KEPT);
+      return;
+    }
     await mkdir(path.dirname(filePath), { recursive: true });
     const tmp = `${filePath}.${process.pid}.${Date.now()}.tmp`;
     await writeFile(tmp, JSON.stringify({ version: 1, approvals: approvals.slice(0, MAX_KEPT) }, null, 2), "utf8");
@@ -227,9 +235,12 @@ export type ApprovalStore = ReturnType<typeof createApprovalStore>;
 const GLOBAL_KEY = Symbol.for("bahi.approvalStore");
 type WithStore = typeof globalThis & { [GLOBAL_KEY]?: ApprovalStore };
 
-/** The app's approval store at data/approvals.json (one per process, survives dev reloads). */
+/**
+ * The app's approval store at data/approvals.json (one per process, survives dev reloads).
+ * In the public demo it lives in memory, so the approval endpoints only ever see the mock world.
+ */
 export function getApprovalStore(): ApprovalStore {
   const g = globalThis as WithStore;
-  g[GLOBAL_KEY] ??= createApprovalStore(path.join(process.cwd(), "data", "approvals.json"));
+  g[GLOBAL_KEY] ??= createApprovalStore(getEnv().DEMO_PUBLIC ? null : path.join(process.cwd(), "data", "approvals.json"));
   return g[GLOBAL_KEY];
 }

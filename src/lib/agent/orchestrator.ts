@@ -111,6 +111,12 @@ export async function runAgent(req: RunRequest, opts: RunOptions = {}): Promise<
   const toolResults: RunResult["toolResults"] = [];
   const done = (reply: string | null, model: string | null): RunResult => ({ runId, events, toolSequence, toolCalls, toolResults, reply, model });
 
+  // The public demo only plays recordings (POST /api/runs), so no model or GST lookup is ever called; this is the backstop.
+  if (env.DEMO_PUBLIC && !opts.model) {
+    emit({ type: "error", recoverable: false, message: "Public demo mein asli agent nahi chalta, sirf recorded runs." });
+    return done(null, null);
+  }
+
   let model: LanguageModelV4 | FallbackModel;
   try {
     model =

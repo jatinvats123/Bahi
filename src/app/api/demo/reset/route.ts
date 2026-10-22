@@ -6,9 +6,12 @@ export const runtime = "nodejs";
 /**
  * POST /api/demo/reset -> reseed the mock world (ledger, inbox, invoices) from fixtures/.
  * Mock mode only: live sandbox data is real history (Notion, PayPal) and is never wiped from here.
- * Run history (data/runs.json) is kept either way.
+ * Run history (data/runs.json) is kept either way. Disabled in the public demo (an admin action).
  */
 export async function POST() {
+  if (getEnv().DEMO_PUBLIC) {
+    return Response.json({ error: "Public demo mein reset band hai. Yahan sab recorded hai, mock data badalta nahi." }, { status: 403 });
+  }
   if (getEnv().SWYTCH_MODE !== "mock") {
     return Response.json({ error: "Live sandbox ka data yahan se reset nahi hota. Mock mode mein hi reset hota hai." }, { status: 409 });
   }

@@ -10,6 +10,8 @@ export interface PublicConfig {
   mode: "live" | "mock";
   /** replay = runs are recorded live runs played back (fixtures/runs), labelled as such. */
   agentMode: "live" | "replay";
+  /** DEMO_PUBLIC=1: recorded runs on mock data, shown with a banner on every page. */
+  publicDemo: boolean;
   businessName: string;
   businessEmail: string | null;
   approvalThresholdInr: number;
@@ -30,6 +32,7 @@ export function getPublicConfig(): PublicConfig {
   return {
     mode: env.SWYTCH_MODE,
     agentMode: env.AGENT_MODE,
+    publicDemo: env.DEMO_PUBLIC,
     businessName: env.BUSINESS_NAME,
     businessEmail: env.BUSINESS_EMAIL ?? null,
     approvalThresholdInr: env.APPROVAL_THRESHOLD_INR,

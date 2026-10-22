@@ -3,6 +3,8 @@ import { getRunBus } from "@/lib/store/run-bus";
 import { getRunStore } from "@/lib/store/runs";
 
 export const runtime = "nodejs";
+// Vercel: a reattached recording ends within about 37 s (see POST /api/runs).
+export const maxDuration = 60;
 
 /**
  * GET /api/runs/:id -> the stored run with every event, for replay.

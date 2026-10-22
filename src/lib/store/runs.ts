@@ -2,6 +2,7 @@ import "server-only";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
+import { getEnv } from "../env";
 import { RunRecordSchema, type RunRecord } from "../run-record";
 
 /**
@@ -87,10 +88,24 @@ export function createRunStore(filePath: string): RunStore {
   };
 }
 
+/** Run history in memory only, for DEMO_PUBLIC=1 (nothing is written to disk). */
+export function createMemoryRunStore(): RunStore {
+  let runs: RunRecord[] = [];
+  const newestFirst = (a: RunRecord, b: RunRecord) => b.startedAt.localeCompare(a.startedAt);
+  return {
+    list: async () => [...runs].sort(newestFirst),
+    get: async (runId) => runs.find((r) => r.runId === runId) ?? null,
+    save: async (record) => {
+      const valid = RunRecordSchema.parse(record);
+      runs = [valid, ...runs.filter((r) => r.runId !== valid.runId)].sort(newestFirst).slice(0, MAX_RUNS);
+    },
+  };
+}
+
 let defaultStore: RunStore | undefined;
 
-/** The app's run store at data/runs.json. */
+/** The app's run store at data/runs.json (in memory in the public demo). */
 export function getRunStore(): RunStore {
-  defaultStore ??= createRunStore(path.join(process.cwd(), "data", "runs.json"));
+  defaultStore ??= getEnv().DEMO_PUBLIC ? createMemoryRunStore() : createRunStore(path.join(process.cwd(), "data", "runs.json"));
   return defaultStore;
 }

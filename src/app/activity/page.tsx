@@ -189,6 +189,8 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
     const audit = await loadAudit({
       projectDir: env.SWYTCHCODE_PROJECT_DIR ?? process.cwd(),
       runs: source === "live" ? runs : [],
+      // Public demo: the Swytchcode CLI never starts and the owner's own audit log stays private.
+      swytchcode: !env.DEMO_PUBLIC,
       policyCli: async () => (await swytchcodeText(["audit", "policy", "--json", "-n", "200"])).stdout,
     });
     return (

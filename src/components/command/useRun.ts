@@ -137,7 +137,7 @@ export function useRun(opts: { onFinished?: () => void } = {}) {
     }
     if (!id) return;
     const ctl = new AbortController();
-    void fetch("/api/runs/live", { cache: "no-store", signal: ctl.signal })
+    void fetch(`/api/runs/live?id=${encodeURIComponent(id)}`, { cache: "no-store", signal: ctl.signal })
       .then((r) => (r.ok ? (r.json() as Promise<{ runs: { runId: string }[] }>) : null))
       .then(async (body) => {
         if (!body?.runs.some((r) => r.runId === id) || controller.current) return;
