@@ -12,7 +12,7 @@ Built for the *Build with Swytchcode* buildathon, Track 6: AI Business Operator.
 
 ## Live demo
 
-**Try it: LIVE_DEMO_URL** (no sign-up, no keys) <!-- After the first Vercel deploy, replace LIVE_DEMO_URL with the production domain. -->
+**Try it: [bahi-demo.vercel.app](https://bahi-demo.vercel.app)** (no sign-up, no keys)
 
 The public demo runs with `DEMO_PUBLIC=1`, which locks Bahi into a safe mode whatever else is set in the environment:
 
@@ -33,7 +33,7 @@ Try the example chips (they map to S1-S6) or press **Ctrl+Shift+D** for one-clic
 3. Leave **Framework Preset** on **Next.js**, **Root Directory** on `./`, and the build, output and install settings on their defaults.
 4. Open **Environment Variables** and add exactly one: key `DEMO_PUBLIC`, value `1`. Add nothing else: no model keys, no Swytchcode, no provider credentials.
 5. Click **Deploy**. When it is done, open the production domain (`https://<project>.vercel.app`, listed under the project's **Domains**) and check: the banner reads **Public demo: recorded runs on mock data**, the sidebar shows **Mock data** and **Recorded**, and the "Sharma Traders ko 15,000 ka invoice" chip ends with a **SENT** stamp.
-6. Replace `LIVE_DEMO_URL` above with that production domain. Share the production domain: Vercel's default Deployment Protection asks for a Vercel login on preview and deployment-specific URLs.
+6. Put that production domain in the "Try it" link above. Share the production domain: Vercel's default Deployment Protection asks for a Vercel login on preview and deployment-specific URLs.
 
 No `vercel.json` is needed: the streaming routes set `maxDuration = 60` (the longest recording plays in about 37 s), and the recordings in `fixtures/runs/` are traced into the `/api/runs` function by `next build`.
 
