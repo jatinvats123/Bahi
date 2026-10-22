@@ -2,6 +2,7 @@ import { z } from "zod";
 import { newRunId, runAgent } from "@/lib/agent/orchestrator";
 import { getEnv } from "@/lib/env";
 import { toNdjsonLine, type RunEvent } from "@/lib/events";
+import { clientIp, getRunLimiter, PUBLIC_RUN_LIMIT } from "@/lib/rate-limit";
 import { playRecording } from "@/lib/replay/player";
 import { loadRecording } from "@/lib/replay/store";
 import { matchScenario, SCENARIO_IDS } from "@/lib/scenarios";
@@ -11,6 +12,8 @@ import { createRunPersister } from "@/lib/store/run-persister";
 import { getRunStore } from "@/lib/store/runs";
 
 export const runtime = "nodejs";
+// Vercel: the longest recording plays in about 37 s, and 60 s is allowed on every plan.
+export const maxDuration = 60;
 
 /**
  * POST /api/runs { text, source } -> NDJSON stream of RunEvents (one JSON object per line).
@@ -19,6 +22,7 @@ export const runtime = "nodejs";
  * Every event is also appended to data/runs.json for /activity replay.
  * AGENT_MODE=replay: the command is matched to a recorded live run (fixtures/runs/) and that
  * recording streams instead, labelled as recorded (run_started.replay). Not saved to history.
+ * DEMO_PUBLIC=1 always replays (see lockForPublicDemo) and limits each IP to PUBLIC_RUN_LIMIT.
  *
  * GET /api/runs -> run history summaries, newest first.
  */
@@ -84,6 +88,17 @@ function streamRun(runId: string, execute: Execute, persist: boolean): Response 
 }
 
 export async function POST(request: Request) {
+  const env = getEnv();
+  if (env.DEMO_PUBLIC) {
+    const limited = getRunLimiter().hit(clientIp(request));
+    if (!limited.ok) {
+      return Response.json(
+        { error: `Public demo mein ek minute mein ${PUBLIC_RUN_LIMIT.limit} run tak chalte hain. ${limited.retryAfterSec} second baad dobara bhejo.` },
+        { status: 429, headers: { "retry-after": String(limited.retryAfterSec) } },
+      );
+    }
+  }
+
   let body: z.infer<typeof BodySchema>;
   try {
     const parsed = BodySchema.safeParse(await request.json());
@@ -93,8 +108,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Request JSON nahi hai" }, { status: 400 });
   }
 
-  const env = getEnv();
-  if (env.AGENT_MODE === "replay") {
+  if (env.AGENT_MODE === "replay" || env.DEMO_PUBLIC) {
     // Recorded runs are not saved to history: Activity stays a record of real runs only.
     const scenario = body.scenario ?? matchScenario(body.text, env.APPROVAL_THRESHOLD_INR);
     if (!scenario) {

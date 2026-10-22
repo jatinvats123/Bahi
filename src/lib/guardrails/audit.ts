@@ -263,12 +263,19 @@ export interface AuditData {
 }
 
 /** Everything for the Audit tab, newest first. Never throws. */
-export async function loadAudit(opts: { projectDir: string; runs: { runId: string; mode: "live" | "mock"; events: RunEvent[] }[]; limit?: number; policyCli?: () => Promise<string> }): Promise<AuditData> {
+export async function loadAudit(opts: {
+  projectDir: string;
+  runs: { runId: string; mode: "live" | "mock"; events: RunEvent[] }[];
+  limit?: number;
+  policyCli?: () => Promise<string>;
+  /** false = leave Swytchcode's own logs out (the public demo never shows the owner's audit). */
+  swytchcode?: boolean;
+}): Promise<AuditData> {
   const project = path.basename(opts.projectDir);
-  const exec = await readExecLog(project);
+  const exec = opts.swytchcode === false ? [] : await readExecLog(project);
   let policyRows: AuditRow[] = [];
   let note: string | null = null;
-  if (opts.policyCli) {
+  if (opts.policyCli && opts.swytchcode !== false) {
     try {
       policyRows = parsePolicyLines(await opts.policyCli());
     } catch {

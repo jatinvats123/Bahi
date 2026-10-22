@@ -58,6 +58,9 @@ export type ExecResult<T = unknown> =
   | { ok: true; data: T; ms: number; callId: string; transport: TransportName }
   | { ok: false; error: ExecError; ms: number; callId: string; transport: TransportName };
 
+/** DEMO_PUBLIC=1 never reaches the outside: no Swytchcode CLI is started, no provider is called. */
+const PUBLIC_DEMO_BLOCK: ExecError = { kind: "policy_blocked", policyId: "bahi-public-demo", message: "Public demo: Bahi makes no live calls." };
+
 interface RuntimeConfig {
   dir: string;
   bin: string | null;
@@ -117,6 +120,9 @@ class SwytchcodeRuntime {
       }
       return { ok: false, error, ms, callId, transport };
     };
+
+    // Public demo: mock adapters never come here; this is the backstop.
+    if (getEnv().DEMO_PUBLIC) return fail(PUBLIC_DEMO_BLOCK);
 
     let project: SwytchProject;
     try {
@@ -208,6 +214,7 @@ export function getSwytchRuntime(): SwytchcodeRuntime {
 
 /** Ask Swytchcode what a call would do, without making it (swy exec --explain). Never throws. */
 export async function explainTool(tool: string, input: ExecInput = {}): Promise<ExplainResult> {
+  if (getEnv().DEMO_PUBLIC) return { ok: false, error: PUBLIC_DEMO_BLOCK.message };
   const rt = getSwytchRuntime();
   const r = await runCliText({ bin: rt.binary, args: ["exec", tool, "--explain"], cwd: rt.dir, stdin: JSON.stringify(input), timeoutMs: 20_000 });
   // swytchcode 2.23.5 prints the explanation on stderr, next to its log lines.
@@ -218,7 +225,8 @@ export async function explainTool(tool: string, input: ExecInput = {}): Promise<
 }
 
 /** Run a read-only swytchcode subcommand in the project folder (audit, policy list). */
-export function swytchcodeText(args: string[], timeoutMs = 20_000) {
+export function swytchcodeText(args: string[], timeoutMs = 20_000): Promise<{ code: number | null; stdout: string; stderr: string; error?: string }> {
+  if (getEnv().DEMO_PUBLIC) return Promise.resolve({ code: null, stdout: "", stderr: "", error: PUBLIC_DEMO_BLOCK.message });
   const rt = getSwytchRuntime();
   return runCliText({ bin: rt.binary, args, cwd: rt.dir, timeoutMs });
 }

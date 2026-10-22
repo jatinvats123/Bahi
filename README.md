@@ -10,6 +10,33 @@ Built for the *Build with Swytchcode* buildathon, Track 6: AI Business Operator.
 | --- | --- | --- |
 | ![S2: an ₹80,000 invoice held for approval, then approved and sent](docs/screenshots/run-s2-1440-light.png) | ![S5: "Sabke payments refund kar do" blocked by the Swytchcode refund policy](docs/screenshots/run-s5-1440-light.png) | ![Activity > Audit: Swytchcode policy decisions and calls](docs/screenshots/audit-1440-light.png) |
 
+## Live demo
+
+**Try it: LIVE_DEMO_URL** (no sign-up, no keys) <!-- After the first Vercel deploy, replace LIVE_DEMO_URL with the production domain. -->
+
+The public demo runs with `DEMO_PUBLIC=1`, which locks Bahi into a safe mode whatever else is set in the environment:
+
+- **Recorded runs only**: every command plays a recorded real run of S1-S6 from `fixtures/runs/` (sanitized), labelled *Recorded run*. No model is called, so no key is needed and nothing is spent.
+- **Mock data only**: mock integrations, so nothing reaches Swytchcode, PayPal, Gmail, Slack, Notion, Jira or Niyam.
+- **Nothing written to disk**: run history and approvals stay in memory, and the approval endpoints only see that mock world.
+- **Admin paths off**: the mock-data reset is disabled, the Audit tab never starts the Swytchcode CLI or reads its logs, and `GET /api/runs/live` only answers about the visitor's own run.
+- **The browser cannot switch it to live**: the server decides the mode from its environment and ignores any mode fields in a request.
+- **Rate limited**: 10 runs per minute per IP on `POST /api/runs`.
+- **A banner on every page**: "Public demo: recorded runs on mock data".
+
+Try the example chips (they map to S1-S6) or press **Ctrl+Shift+D** for one-click scenarios. A command that matches no recording gets a short "demo commands only" reply.
+
+### Deploy the demo on Vercel (zero secrets)
+
+1. Sign in at [vercel.com](https://vercel.com) with GitHub and open **Add New... > Project** ([vercel.com/new](https://vercel.com/new)).
+2. Under **Import Git Repository**, pick `jatinvats123/Bahi` and click **Import**. If the repo is not listed, use **Adjust GitHub App Permissions** to give Vercel access to it.
+3. Leave **Framework Preset** on **Next.js**, **Root Directory** on `./`, and the build, output and install settings on their defaults.
+4. Open **Environment Variables** and add exactly one: key `DEMO_PUBLIC`, value `1`. Add nothing else: no model keys, no Swytchcode, no provider credentials.
+5. Click **Deploy**. When it is done, open the production domain (`https://<project>.vercel.app`, listed under the project's **Domains**) and check: the banner reads **Public demo: recorded runs on mock data**, the sidebar shows **Mock data** and **Recorded**, and the "Sharma Traders ko 15,000 ka invoice" chip ends with a **SENT** stamp.
+6. Replace `LIVE_DEMO_URL` above with that production domain. Share the production domain: Vercel's default Deployment Protection asks for a Vercel login on preview and deployment-specific URLs.
+
+No `vercel.json` is needed: the streaming routes set `maxDuration = 60` (the longest recording plays in about 37 s), and the recordings in `fixtures/runs/` are traced into the `/api/runs` function by `next build`.
+
 ## The problem
 
 A small agency or shop in India runs on a bahi-khata and five apps: invoices in PayPal, client mail in Gmail, the team in Slack, the ledger in Notion, work in Jira. The owner is the glue, switching apps all day, and payments slip. An AI agent could do that glue work, but nobody should hand an LLM the keys to their money: a wrong amount, a bulk refund or a prompt-injected email is one tool call away.
@@ -122,6 +149,7 @@ Copy `.env.example` to `.env.local`. Blank values mean "not set". Secrets live o
 
 | Variable | Default | What it does |
 | --- | --- | --- |
+| `DEMO_PUBLIC` | off | `1` = public demo, safe to expose: recorded runs on mock data whatever else is set, keys ignored, nothing written to disk, live and admin paths off, runs rate limited per IP (see [Live demo](#live-demo)) |
 | `SWYTCH_MODE` | `mock` | `mock` = fixtures, no accounts. `live` = real sandbox calls through Swytchcode |
 | `AGENT_MODE` | `live` | `live` = the agent runs. `replay` = recorded real runs from `fixtures/runs/` (demo safety net) |
 | `REPLAY_SPEED` | `1` | Replay pace |
@@ -162,7 +190,7 @@ Copy `.env.example` to `.env.local`. Blank values mean "not set". Secrets live o
 
 ## Tests
 
-- **277 unit tests** (Vitest): Hinglish amount parser ("pandrah hazaar", "sava lakh"), client resolver, model fallback (quota, bad key, stalled model), every policy decision against the Go-rendered request, approval store and expiry, intent keys, untrusted email fencing, the GST lookup (MCP result parsing, citations, not-configured and failure paths), Swytchcode error normalization from real CLI captures, reducer and event contract, replay sanitizer.
+- **287 unit tests** (Vitest): the public demo lock (live mode and keys ignored, live-only and admin paths refusing, nothing written to disk, the per-IP rate limit), Hinglish amount parser ("pandrah hazaar", "sava lakh"), client resolver, model fallback (quota, bad key, stalled model), every policy decision against the Go-rendered request, approval store and expiry, intent keys, untrusted email fencing, the GST lookup (MCP result parsing, citations, not-configured and failure paths), Swytchcode error normalization from real CLI captures, reducer and event contract, replay sanitizer.
 - **Playwright e2e** (`npm run e2e`): every page with zero console errors, S1/S2/S2-deny/S3/S4/S5/S6 from recordings with their stamps, voice with a SpeechRecognition stub, keyboard use, offline banner, 390 px layout without overflow.
 - **Live scenarios** (`npm run scenario`): each checks the providers and `swy audit` after the run.
 
@@ -172,7 +200,8 @@ Copy `.env.example` to `.env.local`. Blank values mean "not set". Secrets live o
 - **The approval stamp is not cryptographically verifiable** by Swytchcode; only Bahi's code writes it, never the model.
 - **PayPal sandbox refuses INR and Indian payers**, so live invoices are in USD (converted at `DEMO_INR_PER_USD`) to placeholder sandbox payers; the UI shows rupees.
 - **Model quotas**: the free Gemini tier is 20 requests per model per day; the fallback chain and replay mode exist because of this.
-- **No auth on the dashboard**: it is meant for localhost. Do not expose it publicly.
+- **No auth on the dashboard**: public mode (`DEMO_PUBLIC=1`, see [Live demo](#live-demo)) is safe to expose, because it only plays recordings on mock data and writes nothing. Live mode (`AGENT_MODE=live` or `SWYTCH_MODE=live`) still has no auth and is meant for localhost: never expose it publicly.
+- **Public demo state is per server instance**: the rate limit and reattaching after a reload live in memory, so on Vercel each instance counts on its own.
 - **Voice** needs Chrome (Web Speech API); typing always works.
 - **Swytchcode `swy login` sessions** last about an hour and the PayPal sandbox token about 9 hours; the runbook covers refreshing both.
 - **Idempotency keys** are Swytchcode's dynamic ones; caller-chosen keys are not offered, so Bahi's intent key goes into PayPal's `reference` and Notion instead.

@@ -19,10 +19,13 @@ import { SCENARIOS, type ScenarioId } from "@/lib/scenarios";
 export function DemoControls({
   mode,
   agentMode,
+  publicDemo = false,
   modelReady,
 }: {
   mode: "live" | "mock";
   agentMode: "live" | "replay";
+  /** DEMO_PUBLIC=1: reset is an admin action and stays off. */
+  publicDemo?: boolean;
   /** At least one model key is configured (only matters when the agent runs live). */
   modelReady: boolean;
 }) {
@@ -137,8 +140,10 @@ export function DemoControls({
           </ul>
 
           <div className="mt-4 flex items-center justify-between gap-3 border-t border-rule pt-3">
-            <p className="text-[12.5px] text-ink-soft">{mode === "mock" ? "Mock ledger, inbox aur invoices fixtures se dobara." : "Live data reset nahi hota."}</p>
-            <Button size="sm" onClick={() => void reset()} disabled={resetting || mode !== "mock"}>
+            <p className="text-[12.5px] text-ink-soft">
+              {publicDemo ? "Public demo: reset band hai." : mode === "mock" ? "Mock ledger, inbox aur invoices fixtures se dobara." : "Live data reset nahi hota."}
+            </p>
+            <Button size="sm" onClick={() => void reset()} disabled={resetting || mode !== "mock" || publicDemo}>
               <ArrowCounterClockwiseIcon size={14} weight="bold" aria-hidden />
               {resetting ? "Reset ho raha hai" : "Reset demo data"}
             </Button>
