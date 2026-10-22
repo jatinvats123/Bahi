@@ -24,12 +24,13 @@ A small agency or shop in India runs on a bahi-khata and five apps: invoices in 
 | "Kaun late hai? Sabko yaad dilao" (S4) | overdue invoices from Notion, verified with PayPal, polite Gmail reminders (one per day), Slack summary |
 | "Sabke payments refund kar do" (S5) | tries one refund, Swytchcode blocks it before any network call, Bahi stops the batch and alerts Slack |
 | "Aaj ka hisaab batao" (S6) | spoken brief: to receive, overdue, received today; Slack post |
+| "Foreign client ko advertising ka invoice, GST lagega?" | looks the rule up in the official CBIC circulars through [Niyam](https://github.com/jatinvats123/niyam) and answers citing the circular (optional, see below) |
 
 ## How it works
 
 1. The owner speaks (Web Speech API in Chrome) or types. For money commands a strip shows what Bahi understood (`₹15,000 · Sharma Traders · invoice`) and sends after 2.5 s unless the owner says Roko.
 2. `POST /api/runs` starts the agent (Vercel AI SDK 7): Gemini Flash, a backup key, then Groq, chosen per LLM call. It reasons, picks tools, acts, reads results, follows up and gives a final answer in at most 12 steps.
-3. The model sees 13 **domain tools** (find_client, create_and_send_invoice, list_inbox, send_payment_reminder, refund_payment, ...), never raw provider JSON. Code guardrails sit between the model and the money: the amount is checked against the owner's own words, refunds need the owner's command (an email can never trigger one), paid status only comes from PayPal, email bodies are fenced as untrusted data.
+3. The model sees 14 **domain tools** (find_client, create_and_send_invoice, list_inbox, send_payment_reminder, refund_payment, ...), never raw provider JSON. Code guardrails sit between the model and the money: the amount is checked against the owner's own words, refunds need the owner's command (an email can never trigger one), paid status only comes from PayPal, email bodies are fenced as untrusted data.
 4. Each tool calls typed adapters, and every live adapter call is one `swytchcode exec <canonical_id>`: validate, **policies**, credentials, **idempotency**, provider, **audit**.
 5. Every step streams back as a typed `RunEvent` (NDJSON) and appears as a ledger entry with a margin timestamp; states land as rubber stamps (SENT, AWAITING, APPROVED, BLOCKED, DENIED, EXPIRED). Replies are spoken.
 
@@ -42,7 +43,7 @@ flowchart LR
   O["Owner: voice or text<br/>English / Hinglish"] --> B["Browser (Chrome)<br/>Web Speech, confirm strip,<br/>run timeline, approve card"]
   B -- "POST /api/runs" --> R["Next.js 16 server<br/>NDJSON stream, run bus"]
   R --> A["Agent: Vercel AI SDK 7<br/>Gemini, backup key, Groq"]
-  A --> T["13 domain tools<br/>+ code guardrails<br/>+ approval desk"]
+  A --> T["14 domain tools<br/>+ code guardrails<br/>+ approval desk"]
   T --> AD["Typed adapters<br/>live or mock"]
   AD -- "swytchcode exec" --> S["Swytchcode kernel<br/>validate, policies, credentials,<br/>idempotency, audit"]
   S --> P["PayPal sandbox"]
@@ -77,6 +78,24 @@ Policies are code (`src/lib/guardrails/policies.ts`), written to Swytchcode by `
 | Retry safety (Swytchcode idempotency) | PayPal calls carry a dynamic `PayPal-Request-Id` | A retried create charging or invoicing twice |
 | Repeated-command safety (Bahi intent key) | Same client + work + amount on the same day = already done | "Bhej do" said twice creating two invoices |
 | Audit (Swytchcode + Bahi) | `swy audit` + every run event, on Activity > Audit | Unexplained actions: every decision has a record |
+
+## GST rules via Niyam (optional)
+
+An owner asks GST questions next to money commands ("export pe GST lagega?"). A model answering from memory gets these wrong or cites rules that changed. So Bahi does not answer them itself: the `check_gst_rules` tool asks [Niyam](https://github.com/jatinvats123/niyam), a retrieval system over all 272 official CBIC GST circulars (Hindi and Hinglish questions too), over MCP.
+
+- **How**: `src/lib/gst/niyam.ts` starts Niyam's MCP server over stdio (one shared connection) and calls its `search_circulars` tool. Niyam only retrieves; Bahi's own model writes the answer from the returned passages, so Niyam needs no LLM key.
+- **Rules for the model** (system prompt): never state a GST rule from memory; name the circular (`Circular 230/24/2024-GST ke hisaab se ...`); if nothing is found, say so and suggest the CA. A lookup never blocks or changes an invoice.
+- **Audit**: every cited circular is shown in the run timeline and recorded in the run state.
+- **Off by default**: without `NIYAM_MCP_COMMAND` the tool returns `not_configured` and Bahi behaves as before.
+
+```powershell
+# after setting up Niyam (see its README), in Bahi's .env.local:
+#   NIYAM_MCP_COMMAND=C:Usersyou
+iyam.venvScriptspython.exe
+#   NIYAM_MCP_CWD=C:Usersyou
+iyam
+npm run smoke:niyam   # asks Niyam three questions, prints the circulars it found
+```
 
 ## Run it on Windows (no accounts needed)
 
@@ -122,6 +141,7 @@ Copy `.env.example` to `.env.local`. Blank values mean "not set". Secrets live o
 | `BUSINESS_NAME`, `BUSINESS_EMAIL`, `BAHI_PUBLIC_URL` | `DukaanSetu`, , `http://localhost:3000` | Business name, the Gmail inbox Bahi reads, link used in Slack approvals |
 | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_API_KEY` | | Sandbox app; `npm run paypal:token` turns the first two into the token Swytchcode reads |
 | `PAYPAL_MERCHANT_EMAIL`, `PAYPAL_CURRENCY`, `DEMO_INR_PER_USD` | , `INR`, `83` | Sandbox merchant; the sandbox refuses INR, so live uses USD converted at this rate (the UI shows rupees) |
+| `NIYAM_MCP_COMMAND`, `NIYAM_MCP_ARGS`, `NIYAM_MCP_CWD` | off, `-m niyam.mcp_server`, | Optional GST rule lookup: Niyam's Python, module and folder |
 
 ## Scripts
 
@@ -136,12 +156,13 @@ Copy `.env.example` to `.env.local`. Blank values mean "not set". Secrets live o
 | `npm run policies:sync [-- --probe\|--check]` | Write and validate the Swytchcode policies from code |
 | `npm run approve [-- <apr_id> [--deny]]` | Decide a pending approval from the terminal |
 | `npm run swytch:configure`, `setup:notion`, `smoke:swytch`, `paypal:token` | Live setup helpers (see docs/SETUP.md) |
+| `npm run smoke:niyam` | Live check of the GST rule lookup against Niyam's MCP server |
 | `npm run seed:inbox`, `seed:gmail` | Older S3 inbox seeders (`demo:reset` does this now) |
 | `npm run record:replays`, `screenshots`, `docs:tools`, `contrast` | Rebuild recordings, README screenshots, TOOLS.md, WCAG contrast report |
 
 ## Tests
 
-- **266 unit tests** (Vitest): Hinglish amount parser ("pandrah hazaar", "sava lakh"), client resolver, model fallback (quota, bad key, stalled model), every policy decision against the Go-rendered request, approval store and expiry, intent keys, untrusted email fencing, Swytchcode error normalization from real CLI captures, reducer and event contract, replay sanitizer.
+- **277 unit tests** (Vitest): Hinglish amount parser ("pandrah hazaar", "sava lakh"), client resolver, model fallback (quota, bad key, stalled model), every policy decision against the Go-rendered request, approval store and expiry, intent keys, untrusted email fencing, the GST lookup (MCP result parsing, citations, not-configured and failure paths), Swytchcode error normalization from real CLI captures, reducer and event contract, replay sanitizer.
 - **Playwright e2e** (`npm run e2e`): every page with zero console errors, S1/S2/S2-deny/S3/S4/S5/S6 from recordings with their stamps, voice with a SpeechRecognition stub, keyboard use, offline banner, 390 px layout without overflow.
 - **Live scenarios** (`npm run scenario`): each checks the providers and `swy audit` after the run.
 
@@ -155,6 +176,7 @@ Copy `.env.example` to `.env.local`. Blank values mean "not set". Secrets live o
 - **Voice** needs Chrome (Web Speech API); typing always works.
 - **Swytchcode `swy login` sessions** last about an hour and the PayPal sandbox token about 9 hours; the runbook covers refreshing both.
 - **Idempotency keys** are Swytchcode's dynamic ones; caller-chosen keys are not offered, so Bahi's intent key goes into PayPal's `reference` and Notion instead.
+- **GST lookup covers CBIC circulars only**, not notifications or the Act, and needs Niyam running locally (Python). It informs answers; it is not tax advice.
 - The optional Laya System-1 model (phase 6) was not built; intent routing and triage stay with the LLM, backed by rule-based injection signals and the Swytchcode email policy.
 
 ## Docs

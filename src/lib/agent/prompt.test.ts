@@ -49,3 +49,14 @@ describe("detectOwnerLanguage", () => {
   });
 });
 
+
+describe("GST rules", () => {
+  it("adds the GST section only when check_gst_rules is connected", () => {
+    const now = new Date("2026-09-25T06:00:00Z");
+    expect(buildSystemPrompt({ ...base, now })).not.toContain("check_gst_rules");
+    const p = buildSystemPrompt({ ...base, now, gstLookup: true });
+    expect(p).toMatch(/Never state a GST rate, exemption or rule from memory/);
+    expect(p).toMatch(/name the circular/);
+    expect(p).toMatch(/never blocks or changes an invoice/);
+  });
+});

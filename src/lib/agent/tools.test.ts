@@ -45,6 +45,7 @@ describe("tool schemas", () => {
     const { tools } = setup("x");
     expect(Object.keys(tools).sort()).toEqual(
       [
+        "check_gst_rules",
         "check_invoice_status",
         "create_and_send_invoice",
         "daily_brief",

@@ -4,6 +4,7 @@ import type { LanguageModelV4 } from "@ai-sdk/provider";
 import { generateText, hasToolCall, isStepCount } from "ai";
 import { getClientDirectory } from "../clients";
 import { getEnv } from "../env";
+import { niyamFromEnv } from "../gst/niyam";
 import type { RunEvent, RunEventDraft } from "../events";
 import { getApprovalStore } from "../guardrails/approvals";
 import { explainInvoiceLive, swytchcodeHitlStatus } from "../guardrails/live";
@@ -136,6 +137,7 @@ export async function runAgent(req: RunRequest, opts: RunOptions = {}): Promise<
     ...(integrations.mode === "live" ? { explainInvoice: explainInvoiceLive, swytchcodeStatus: swytchcodeHitlStatus } : {}),
   };
 
+  const gst = niyamFromEnv();
   const tools = createAgentTools({
     integrations,
     emit,
@@ -152,6 +154,7 @@ export async function runAgent(req: RunRequest, opts: RunOptions = {}): Promise<
     state,
     runId,
     approvals,
+    gst,
   });
 
   const modelLabel = () => ("active" in model ? (model as FallbackModel).active.label : model.modelId);
@@ -165,6 +168,7 @@ export async function runAgent(req: RunRequest, opts: RunOptions = {}): Promise<
         approvalThresholdInr: env.APPROVAL_THRESHOLD_INR,
         opsChannel: env.SLACK_OPS_CHANNEL,
         language: detectOwnerLanguage(text),
+        gstLookup: gst !== null,
       }),
       prompt: text,
       tools,

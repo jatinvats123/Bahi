@@ -58,7 +58,7 @@ Bahi acts; Swytchcode makes sure it can only act safely. Bol ke business chalao.
 Because the safety has to live outside the model: policies, idempotency, credentials and audit sit in one kernel that every call must pass, so a prompt can't talk its way around them. One integration layer also gave us five providers, 36 tools, and one error model instead of five SDKs and five auth flows.
 
 **2. What if the LLM gets it wrong?**
-It can't compose PayPal JSON: it calls 13 domain tools, and code checks the amount against the owner's own words, refunds need the owner's command, and "paid" only comes from PayPal. Behind that, Swytchcode policies block large refunds, hold large invoices for approval and restrict who can be emailed, and the owner sees a confirm strip before money commands.
+It can't compose PayPal JSON: it calls 14 domain tools, and code checks the amount against the owner's own words, refunds need the owner's command, and "paid" only comes from PayPal. Behind that, Swytchcode policies block large refunds, hold large invoices for approval and restrict who can be emailed, and the owner sees a confirm strip before money commands.
 
 **3. How does duplicate protection work?**
 Two layers: Swytchcode's dynamic idempotency gives each PayPal call a `PayPal-Request-Id`, so a network retry can't create a second invoice. And Bahi's intent key (client + work + amount + day) is stored in Notion and PayPal, so saying "bhej do" twice returns "already sent at 12:51" instead of a second invoice.

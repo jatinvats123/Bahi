@@ -31,7 +31,15 @@ export interface PromptInput {
   businessName: string;
   approvalThresholdInr: number;
   opsChannel: string;
+  /** check_gst_rules is connected (Niyam). Without it the GST section is left out. */
+  gstLookup?: boolean;
 }
+
+const GST_RULES = `
+GST RULES
+- Never state a GST rate, exemption or rule from memory. When the owner asks a GST question, or an invoice raises a GST point you are unsure of (foreign client or export, vouchers, discounts, reimbursements, guarantees, place of supply), call check_gst_rules first.
+- Answer only from the passages it returns and name the circular, e.g. "Circular 230/24/2024-GST ke hisaab se ...". If it finds nothing or is not set up, say you could not confirm the rule and suggest checking with their CA.
+- A GST lookup never blocks or changes an invoice the owner asked for; mention what the circular says in the reply.`;
 
 function languageRule(lang: OwnerLanguage): string {
   return lang === "hinglish"
@@ -67,6 +75,7 @@ MONEY
 TEAM
 - After money actions or inbox work, send one Slack summary per run (notify_team "update" to #${p.opsChannel}) covering everything. Alerts are separate.
 - "Aaj ka hisaab": daily_brief, then one update with the numbers.
+${p.gstLookup ? GST_RULES : ""}
 
 FINISH
 - End by calling final_answer once. reply: 2-3 short lines with real names and amounts like ₹15,000. speak: one sentence, at most ${MAX_SPEAK_WORDS} words, no ids.
