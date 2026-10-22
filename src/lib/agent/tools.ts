@@ -13,6 +13,7 @@ import type { ExecError } from "../swytch/errors";
 import type { Outcome } from "../integrations/result";
 import { isPaypalPaid, type CallCtx, type CreateInvoiceInput, type EmailMessage, type Integrations, type LedgerRow, type LedgerRowInput, type PaypalInvoice } from "../integrations/types";
 import { TOOLS } from "../swytch/tools";
+import type { GstLookup } from "../gst/niyam";
 import type { Client } from "../ledger";
 import { amountMismatch } from "./amount";
 import { resolveClient } from "./resolve-client";
@@ -68,6 +69,8 @@ export interface AgentRunState {
   flaggedEmails: Set<string>;
   /** Short facts learned from tools (e.g. the brief numbers), for a summary if the model gives out. */
   facts: string[];
+  /** CBIC circulars check_gst_rules returned in this run, for the audit trail. */
+  gstCitations: string[];
   final: { reply: string; speak: string } | null;
 }
 
@@ -83,10 +86,12 @@ export interface AgentToolContext {
   state: AgentRunState;
   runId?: string | null;
   approvals?: ApprovalDeps;
+  /** GST rule lookup (Niyam over MCP). Absent: check_gst_rules says it is not set up. */
+  gst?: GstLookup | null;
 }
 
 export function createRunState(): AgentRunState {
-  return { ledger: null, paypal: new Map(), invoices: new Map(), blocked: null, blockAlerted: false, refundsAttempted: 0, approvalStopped: null, moneyActions: [], slackUpdates: 0, alerts: new Set(), flaggedEmails: new Set(), facts: [], final: null };
+  return { ledger: null, paypal: new Map(), invoices: new Map(), blocked: null, blockAlerted: false, refundsAttempted: 0, approvalStopped: null, moneyActions: [], slackUpdates: 0, alerts: new Set(), flaggedEmails: new Set(), facts: [], gstCitations: [], final: null };
 }
 
 // ------------------------------------------------------------------ helpers
@@ -685,6 +690,32 @@ export function createAgentTools(ctx: AgentToolContext) {
           receivedTodayCount: b.receivedTodayCount,
           overdueInvoices: b.overdueInvoices.slice(0, 10),
           ...(b.paidInPaypalNotLedger.length ? { paidInPaypalButLedgerNotUpdated: b.paidInPaypalNotLedger } : {}),
+        };
+      }),
+    }),
+
+    check_gst_rules: tool({
+      description:
+        "Look up what the official CBIC GST circulars say about a GST question: whether GST applies, rates, exemptions, exports and foreign clients, place of supply, input tax credit, vouchers, discounts. Returns passages with circular number, date and pages. Call it before stating any GST rule, and name the circular you rely on.",
+      inputSchema: z.object({
+        question: z.string().min(5).describe("The GST question in plain English, e.g. \"Is advertising service to a foreign client an export of services?\""),
+      }),
+      execute: guarded(ctx, async ({ question }: { question: string }) => {
+        if (!ctx.gst) {
+          return fail("not_configured", "GST rule lookup (Niyam) is not set up.", { hint: "Tell the owner you could not check the GST rule and suggest asking their CA. Do not state a rule." });
+        }
+        emit({ type: "thinking", text: `GST niyam check: ${question}` });
+        const passages = await ctx.gst.search(question, 4);
+        if (!passages.length) {
+          return { ok: true, found: false, hint: "No circular covers this. Say you could not confirm it from the circulars; do not state a rule." };
+        }
+        for (const p of passages) if (!state.gstCitations.includes(p.circular)) state.gstCitations.push(p.circular);
+        emit({ type: "thinking", text: `Circulars mile: ${passages.map((p) => p.circular).join(", ")}` });
+        return {
+          ok: true,
+          found: true,
+          passages: passages.map((p) => ({ circular: p.circular, date: p.date, pages: p.pages, subject: p.subject, excerpt: p.text.slice(0, 900) })),
+          hint: "Use only what these passages say, and name the circular number you rely on. If they do not answer the question, say so.",
         };
       }),
     }),
